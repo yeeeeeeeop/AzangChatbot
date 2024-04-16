@@ -4,7 +4,7 @@ import json
 from operator import itemgetter
 from langchain_community.llms.huggingface_endpoint import HuggingFaceEndpoint
 from langchain_community.chat_models.huggingface import ChatHuggingFace
-from langchain.embeddings.huggingface import HuggingFaceInferenceAPIEmbeddings
+from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.vectorstores.faiss import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import ChatPromptTemplate
@@ -12,8 +12,9 @@ from langchain.schema.runnable import RunnableLambda
 #from langchain.callbacks.base import BaseCallbackHandler
 
 # 함수 구현
-base_embedding = HuggingFaceInferenceAPIEmbeddings(
+base_embedding = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2",
+    model_kwargs={"device": "cpu"}
 )
 #if "diagnosis" not in st.session_state:
 #    st.session_state.diagnosis = ""
@@ -36,22 +37,26 @@ def Choose_llm(chosen_llm: str, type: str):
         llm_diagnosis =  HuggingFaceEndpoint(
             repo_id="mistralai/Mistral-7B-Instruct-v0.2",
             temperature= 0.1,
+            huggingfacehub_api_token=st.secrets["HUGGINGFACEHUB_API_KEY"],
             #callbacks=DiagnosisCallbackHandler,
         )
         llm_chating = HuggingFaceEndpoint(
             repo_id="mistralai/Mistral-7B-Instruct-v0.2",
             temperature= 0.1,
+            huggingfacehub_api_token=st.secrets["HUGGINGFACEHUB_API_KEY"],
             #callbacks=ChatbotCallbackHandler,
         )
     if chosen_llm == "BioGPT: fine-tuned but not latest":
         llm_diagnosis =  HuggingFaceEndpoint(
             repo_id="microsoft/BioGPT-Large",
             temperature= 0.1,
+            huggingfacehub_api_token=st.secrets["HUGGINGFACEHUB_API_KEY"],
             #callbacks=DiagnosisCallbackHandler,
         )
         llm_chating =  HuggingFaceEndpoint(
             repo_id="microsoft/BioGPT-Large",
             temperature= 0.1,
+            huggingfacehub_api_token=st.secrets["HUGGINGFACEHUB_API_KEY"],
             #callbacks=ChatbotCallbackHandler,
         )
     chat_model_diagnosis = ChatHuggingFace(llm=llm_diagnosis)
@@ -64,10 +69,10 @@ def Choose_llm(chosen_llm: str, type: str):
 @st.cache_data(show_spinner= "RAG preparation proceeds...")
 def Prepare_for_RAG():
     on_file_path = os.getcwd()
-    on_dir_path = os.path.dirname(on_file_path)
-    faiss_path = on_dir_path+"\\ForFAISS"
-    os.mkdir(faiss_path)
-    file_path = on_dir_path+"Entrez_selected_for_RAG.json"
+    faiss_path = on_file_path+"\\ForFAISS"
+    if not os.path.isdir(faiss_path):
+        os.mkdir(faiss_path)
+    file_path = on_file_path+"\\Entrez_selected_for_RAG.json"
     with open(file_path, "r") as f:
         try:
             papers_json = json.load(f)
@@ -104,8 +109,7 @@ def Generate_context(_dict: dict) -> str:
 
 def _Generate_context(query, how_many_search):
     on_file_path = os.getcwd()
-    on_dir_path = os.path.dirname(on_file_path)
-    vectordb_RAG = FAISS.load_local(folder_path=str(on_dir_path+"\\ForFAISS"), embeddings=base_embedding, allow_dangerous_deserialization=True)
+    vectordb_RAG = FAISS.load_local(folder_path=str(on_file_path+"\\ForFAISS"), embeddings=base_embedding, allow_dangerous_deserialization=True)
     context_list = vectordb_RAG.similarity_search(query=query, k=how_many_search)
     context_list_modified = [item.page_content+" ("+item.metadata["article_name"]+","+item.metadata["journal"]+")" for item in context_list]
     context_str = "\n".join(context_list_modified)
@@ -115,24 +119,23 @@ def Generate_symptom(_dict: dict) -> str:
     symptom_str = symptom_str + "\n" + _dict["additional_context"]
     return symptom_str
 
+#@st.cache_data(show_spinner="Making diagnose...")
 def Activate_diagnosis_chain(_dict:dict):
     diagnosis_chain = {
         "symptoms": itemgetter("user_data") | RunnableLambda(Generate_symptom),
-        "context": {
-            "query": itemgetter("user_data") | RunnableLambda(Generate_symptom),
-            "how_many_search": itemgetter("how_many_search")
-        } | RunnableLambda(Generate_context),
-    } | diagnosis_propmt | chat_model_diagnosis
+        "contexts": {"query": itemgetter("user_data") | RunnableLambda(Generate_symptom), "how_many_search": itemgetter("how_many_search")} | RunnableLambda(Generate_context),
+        } | diagnosis_propmt | chat_model_diagnosis
     res = diagnosis_chain.invoke(_dict)
-    return res
+    return res.content
 
 # 랭체인 구현
 diagnosis_propmt = ChatPromptTemplate.from_messages([
     (
-        "system",
+        "user",
         """<s>[INST]You are a helpful disease-diagnosis assistant.
         You have to diagnosis diseases based on patient's symptoms and given contexts, step by step, making a chain of thoughts.
         Do not make an answer on your own when you have no idea about patient's symptoms and given contexts. In that case, just say you don't know.
+        Do contain your inference of the disease at the beginning of your answer.
         ###
         Patient's symptoms:
         I feel headache. I have low-level fever. I have dry-nose and cough.
@@ -146,13 +149,13 @@ diagnosis_propmt = ChatPromptTemplate.from_messages([
         Diagnosis patient's disease base on patient's symptoms and contexts above.[/INST]"""
     ),
     (
-        "ai",
+        "assistant",
         """The patient could be diagnosed as common cold.
         In the patient's symptoms, headache, fever, dry-nose and cough are important signs. Not having dizziness is also important.
         Based on the article common coldology, published on Journal of KYUs, it is reported that when the patients have fever, headache and cough they could be diagnosed as common cold.<s>"""
     ),
     (
-        "human",
+        "user",
         """[INST]Patient's symptoms:
         {symptoms}
         #
@@ -202,7 +205,8 @@ with st.sidebar:
             use_container_width= True
         )
         if rag_prepare:
-            Prepare_for_RAG()
+            if not os.path.isfile(os.getcwd()+"\\ForFAISS\\index.faiss"):
+                Prepare_for_RAG()
             st.session_state["RAG_prepare"] = "yes"
     if st.session_state["RAG_prepare"] == "yes":
         st.write("RAG has been activated!")
@@ -264,7 +268,7 @@ if st.session_state["progress"][0] == "user_qa_end":
         if st.session_state["RAG_prepare"] == "yes":
             st.write(Activate_diagnosis_chain({
                 "user_data" : st.session_state["user_data"],
-                "how_many_search" : 10
+                "how_many_search" : 20
             }))
 
 user_input = st.text_input("Send a message to your ai!", key="widget", on_change=Submit)
