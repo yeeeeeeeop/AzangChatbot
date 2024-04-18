@@ -1,4 +1,4 @@
 .streamlit
-.cache
 ForFAISS
 __pycache__
+notebook.ipynb
