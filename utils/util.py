@@ -35,10 +35,7 @@ def Generate_local_faiss(abs_list, metadata_list, faiss_path):
     vectordb_RAG.save_local(folder_path=faiss_path)
 
 def Generate_context(_dict: dict) -> str:
-    try:
-        vectordb_RAG = FAISS.load_local(folder_path=_dict["faiss_path"], embeddings=hf_embedding)
-    except:
-        raise FileNotFoundError("Make sure your .\\ForFAISS dir has two files: index.faiss, index.pkl")
+    vectordb_RAG = FAISS.load_local(folder_path=_dict["faiss_path"], embeddings=hf_embedding, allow_dangerous_deserialization=True)
     context_list = vectordb_RAG.similarity_search(query=_dict["query"], k=_dict["how_many_search"])
     context_list_modified = [item.page_content+" ("+item.metadata["article_name"]+","+item.metadata["journal"]+")" for item in context_list]
     context_str = "\n".join(context_list_modified)
