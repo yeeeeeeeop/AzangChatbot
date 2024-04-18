@@ -15,12 +15,12 @@ class Messages_translator:
             self.from_lang = "en"
             self.to_lang = Messages_translator.__lang
 
-    def translator(*args):
+    def translate(self, *args):
         if Messages_translator.__lang == "en":
             return list(args)
         else:
             for_translated_list = list(args)
-            translated_list = Messages_translator.__translate_list(for_translated_list)
+            translated_list = Messages_translator.__translate_list(self, for_translated_list)
             if len(translated_list) == 1:
                 return translated_list[0]
             else:
@@ -32,32 +32,31 @@ class Messages_translator:
         trs = Messages_translator.__trans
         return trs.translate(_text, src=self.from_lang, dest=self.to_lang).text
 
-    @staticmethod
-    def __translate_list(_list: list) -> list:
+    def __translate_list(self, _list: list) -> list:
         instance_list = list()
         for item in _list:
             if type(item) == str:
-                item_trs = Messages_translator.__translate_text(item)
+                item_trs = Messages_translator.__translate_text(self, item)
             elif type(item) == list:
-                item_trs = Messages_translator.__translate_list(item)
+                item_trs = Messages_translator.__translate_list(self, item)
             elif type(item) == dict:
-                item_trs = Messages_translator.__translate_dict(item)
+                item_trs = Messages_translator.__translate_dict(self, item)
             else:
                 raise TypeError("How could...? You've got an error in list translation")
             instance_list.append(item_trs)
         return instance_list
-    @staticmethod
-    def __translate_dict(_dict: dict) -> dict:
+
+    def __translate_dict(self, _dict: dict) -> dict:
         instance_dict = dict()
         dict_keys_list = list(_dict.keys())
         dict_values_list = list(_dict.values())
         for index, value in enumerate(dict_values_list):
             if type(value) == str:
-                value_trs = Messages_translator.__translate_text(value)
+                value_trs = Messages_translator.__translate_text(self, value)
             elif type(value) == dict:
-                value_trs = Messages_translator.__translate_dict(value)
+                value_trs = Messages_translator.__translate_dict(self, value)
             elif type(value) == list:
-                value_trs = Messages_translator.__translate_list(value)
+                value_trs = Messages_translator.__translate_list(self, value)
             else:
                 raise TypeError("How could...? You've got an error in dict translation")
             instance_dict[f"{dict_keys_list[index]}"] = value_trs
@@ -128,10 +127,10 @@ class UI_messages(Messages_translator):
 
     @classmethod
     def system_messages(cls):
-        return super().translator(cls.__system_messages_dict)
+        return super().translate(cls.__system_messages_dict)
     @classmethod
     def ai_messages(cls):
-        return super().translator(cls.__ai_messages_dict)
+        return super().translate(cls.__ai_messages_dict)
     @classmethod
     def user_messages(cls):
-        return super().translator(cls.__user_messages_dict)
+        return super().translate(cls.__user_messages_dict)
