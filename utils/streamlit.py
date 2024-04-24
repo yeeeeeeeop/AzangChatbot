@@ -79,7 +79,7 @@ def Load_chat_model(chosen_llm: str, api_token: str):
 
 @st.cache_data(show_spinner="WAIT...")
 def Prepare_for_RAG(main_path, faiss_path):
-    papers_json = Read_json(main_path + "\\resource\\" + "Entrez_selected_for_RAG.json")
+    papers_json = Read_json(os.path.join(main_path, "resource", "Entrez_selected_for_RAG.json"))
     abs_list_raw = list(items["abstract"] for items in papers_json["paper_list"])
     metadata_list_raw = list(dict(filter(lambda items: items[0] != "abstract", article_dict.items())) for article_dict in papers_json["paper_list"])
     abs_list, metadata_list = Split_and_format_documents(abs_list_raw, metadata_list_raw)

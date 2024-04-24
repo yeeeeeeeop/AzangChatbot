@@ -12,7 +12,7 @@ def Setting():
     Setting_language()
     global main_path, faiss_path
     main_path = os.getcwd()
-    faiss_path = main_path+"\\ForFAISS"
+    faiss_path = os.path.join(main_path, "ForFAISS")
     if not os.path.isdir(faiss_path):
         os.mkdir(faiss_path)
 
@@ -56,7 +56,7 @@ def Sidebar():
                 use_container_width= True
             )
             if rag_prepare:
-                if not os.path.isfile(faiss_path+"\\index.faiss"):
+                if not os.path.isfile(os.path.join(faiss_path, "index.faiss")):
                     Prepare_for_RAG(main_path, faiss_path)
                 st.session_state.RAG_prepare = True
                 st.rerun()
