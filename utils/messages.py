@@ -3,11 +3,11 @@ from googletrans import Translator, LANGCODES
 language_list = list(LANGCODES.keys())
 
 class Messages_translator:
-    __lang = ""
+    __lang = "en"
     __trans = Translator()
 
     def __init__(self, language: str, to_eng: bool | None = False):
-        Messages_translator.__lang = LANGCODES[f"{language.lower()}"]
+        Messages_translator.__lang = LANGCODES[f"{language}"]
         if to_eng == True:
             self.from_lang = Messages_translator.__lang
             self.to_lang = "en"
@@ -16,12 +16,16 @@ class Messages_translator:
             self.to_lang = Messages_translator.__lang
 
     def translate(self, *args):
+        for_translated_list = list(args)
+        list_length = len(for_translated_list)
         if Messages_translator.__lang == "en":
-            return list(args)
+            if list_length == 1:
+                return for_translated_list[0]
+            else:
+                return for_translated_list
         else:
-            for_translated_list = list(args)
             translated_list = Messages_translator.__translate_list(self, for_translated_list)
-            if len(translated_list) == 1:
+            if list_length == 1:
                 return translated_list[0]
             else:
                 return translated_list
@@ -64,73 +68,120 @@ class Messages_translator:
 
 class UI_messages(Messages_translator):
     __system_messages_dict = {
+        "title":
+        """Chatbot for you!""",
         "choice":
-        """Choose & please!""", # & == something
+        """Choose""",
         "write":
-        """Write & please!""", # & == i.e. your api key
+        """Write""",
         "wait":
         """Please wait a moment...""",
         "complete":
         """Action complete!""",
-        "send_to_ai":
-        """Send a message to the ai!""",
+        "send_to_ai": {
+            "request":
+            """Send a message to the ai!""",
+            "error":
+            """Oh... you might forget to fill the form above! Can you double-check? I need some information about your baby's poop to help you!"""
+        },
         "reset":
         """Reset""",
         "poop_info_request":
         """Tell me some informations about your baby's poop!""",
-        "color_info" : {
-            "request" :
-            """Write your baby's poop color.""",
-            "examples":
-            """Red or Green or Black... or else""",
+        "form": {
+            "color_info" : {
+                "request" :
+                """Write your baby's poop color.""",
+                "contents":
+                ["Red", "Green", "Black", "White", "Brown", "Ambiguous"],
+                "suffix":
+                """The stool color of my baby was""",
+                "error":
+                """You must tell me about poop color!"""
+                },
+            "form_info" : {
+                "request":
+                """Choose the baby poop's form""",
+                "contents":
+                ["severe diarrhea", "diarrhea", "normal", "constipation", "severe constipation"],
+                "suffix":
+                """The stool of my baby was"""
+                },
+            "blood_info" : {
+                "request":
+                """Does your baby's poop have any blood?""",
+                "contents":
+                ["not-bloody", "bloody"],
+                "suffix":
+                """The stool of my baby seemed to be"""
+                }
+            },
+        "RAG":{
+            "request":
+            """Start preparation for < R A G >!""",
             "error":
-            """You must tell me about poop color!"""
+            """You have to prepare RAG thorough left sidebar for me to diagnosis."""
             },
-        "form_info" : {
+        "model": {
             "request":
-            """Choose the baby poop's form""",
-            "contents": ["severe diarrhea", "diarrhea", "normal", "constipation", "severe constipation"]
+            """Load <Chat_model>!""",
+            "error":
+            """You have to set a chat model thorough left sidebar for me to diagnosis."""
             },
-        "blood_info" : {
-            "request":
-            """Does your baby's poop have any blood?""",
-            "contents": ["not-bloody", "bloody",]
-            },
-        "RAG_error":
-        """You have to prepare RAG thorough left sidebar for me to diagnosis.""",
-        "model_error":
-        """You have to set a chat model thorough left sidebar for me to diagnosis."""
+        "chain": {
+            "num":
+            """How many documents do you wanna contain for <<RAG search>?""",
+            "start":
+            """Start making diagnosis"""
+        },
+        "chat": {
+            "start":
+            """You can start chat about the diagnosis now on!""",
+            "label":
+            """Chat Start!"""
+        }
     }
     __ai_messages_dict = {
         "intro" :
-        """Hi! I'm baby poop expert... And I'm here for YOU! 
-        \nBut wait... I need some information about your baby's poop.
-        \nCan you fill the form below for me to help you?
-        \nOh, I recommend you to do something on your left sidebar first!""",
+        """Good day. I am present to alleviate your concerns. 
+        \nIt brings me satisfaction to know that you have entrusted me with aiding in the resolution of your worries.
+        \nI am committed to offering my utmost efforts to address your concerns.
+        \nMight you kindly provide details regarding the infant's symptoms?""",
 
         "form_submitted" :
-        """The form submitted! You can fold the form above.")
-        \nOkay. Now I know that your baby's poop was {poop_form}, {poop_color}, and {blood_form}
-        \nIs there something more to tell me about your baby? Tell me about it in one message!""",
+        """Understood. I believe I have an understanding of the symptoms the baby exhibited.
+        \nAdditionally, do you have any further information you would like to provide?
+        \nPlease feel free to share any additional details.""",
 
         "check_user_input" :
         """Do you think the explanation you sent is enough?
         \nPlease correct and send the explanation until you are satisfied, and press the button below if you are satisfied""",
 
         "chain" :
-        """Okay. Just give me a few minutes, or just seconds. I'll help you.""",
+        """Understood. Could you please wait for a moment?
+        \nI will provide an assessment of the baby's health status within a few minutes."""
         }
     __user_messages_dict = {
         "user_confirmed":
-        """I am satisfied with my explanation.""",
+        """I am satisfied with my explanation."""
     }
 
+    def system_messages(self):
+        messages: dict = super().translate(UI_messages.__system_messages_dict)
+        return messages
+    def ai_messages(self):
+        messages: dict = super().translate(UI_messages.__ai_messages_dict)
+        return messages 
+    def user_messages(self):
+        messages: dict = super().translate(UI_messages.__user_messages_dict)
+        return messages
+
     @classmethod
-    def system_messages(cls):
-        return super().translate(cls.__system_messages_dict)
-    @classmethod
-    def ai_messages(cls):
-        return super().translate(cls.__ai_messages_dict)
-    @classmethod
-    def user_messages(cls):
-        return super().translate(cls.__user_messages_dict)
+    def format_messages_for_form(cls):
+        form_choices_dict = dict()
+        form_suffix_dict = dict()
+        form_option_list = list(cls.__system_messages_dict["form"].keys())
+        for item in form_option_list:
+            form_choices_dict[item] = cls.__system_messages_dict["form"][item]["contents"]
+            form_suffix_dict[item] = cls.__system_messages_dict["form"][item]["suffix"]
+        return form_choices_dict, form_suffix_dict

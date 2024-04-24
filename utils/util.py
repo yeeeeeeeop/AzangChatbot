@@ -20,8 +20,8 @@ def Split_and_format_documents(abs_list_raw, metadata_list_raw):
     abs_list = list()
     metadata_list = list()
     splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-        chunk_size=500,
-        chunk_overlap=100
+        chunk_size=300,
+        chunk_overlap=30
     )
     for i in range(len(abs_list_raw)):
         splitted_text_list = splitter.split_text(abs_list_raw[i])
@@ -34,14 +34,23 @@ def Generate_local_faiss(abs_list, metadata_list, faiss_path):
     vectordb_RAG = FAISS.from_texts(texts=abs_list, embedding=hf_embedding, metadatas=metadata_list)
     vectordb_RAG.save_local(folder_path=faiss_path)
 
-def Generate_context(_dict: dict) -> str:
-    vectordb_RAG = FAISS.load_local(folder_path=_dict["faiss_path"], embeddings=hf_embedding, allow_dangerous_deserialization=True)
-    context_list = vectordb_RAG.similarity_search(query=_dict["query"], k=_dict["how_many_search"])
-    context_list_modified = [item.page_content+" ("+item.metadata["article_name"]+","+item.metadata["journal"]+")" for item in context_list]
-    context_str = "\n".join(context_list_modified)
-    return context_str
 
-def Generate_symptom(_dict: dict) -> str:
-    symptom_str = f"""The stool color of my baby was {_dict["basic_info"]["color"].lower()}. The stool of my baby seemed to be {_dict["basic_info"]["blood"]}. The stool of my baby was {_dict["basic_info"]["form"]}"""
-    symptom_str = symptom_str + "\n" + _dict["additional_context"]
-    return symptom_str
+def Add_diagnostic_contexts(_dict: dict) -> dict:
+    vectordb_RAG = FAISS.load_local(folder_path=_dict["faiss_path"], embeddings=hf_embedding, allow_dangerous_deserialization=True)
+    context_list = vectordb_RAG.similarity_search(query=_dict["symptoms"], k=_dict["how_many_search"])
+    context_list_modified = [item.page_content.lower()+" ("+item.metadata["article_name"]+","+item.metadata["journal"]+")" for item in context_list]
+    _dict["context_list"] = context_list_modified
+    del _dict["how_many_search"]
+    del _dict["faiss_path"]
+    return _dict
+
+def Add_chat_context(_dict: dict):
+    vectordb_RAG = FAISS.load_local(folder_path=_dict["faiss_path"], embeddings=hf_embedding, allow_dangerous_deserialization=True)
+    retriever = vectordb_RAG.as_retriever(
+        search_type = "similarity_score_threshold",
+        search_kwargs= {"k": 3, "score_threshold": 0.7}
+        )
+    question = _dict["diagnosis"][:720] +"\n\n\n"+ _dict["query"]
+    _dict["context"] = retriever.invoke(question)
+    del _dict["faiss_path"]
+    return _dict

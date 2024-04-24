@@ -1,180 +1,212 @@
 import os
 import streamlit as st
-from utils.util import Read_json, Split_and_format_documents, Generate_local_faiss
-from llm.base import llm_list, choose_llm_for_chatmodel
-from llm.chains import Activate_diagnosis_chain
+from llm.base import llm_list
+from utils.messages import language_list, Messages_translator
+from utils.streamlit import *
 
-def Setting_path():
+def Setting():
+    st.set_page_config(
+        page_title="aIkNow Healthcare"
+    )
+    Setting_session_state()
+    Setting_language()
     global main_path, faiss_path
     main_path = os.getcwd()
     faiss_path = main_path+"\\ForFAISS"
     if not os.path.isdir(faiss_path):
         os.mkdir(faiss_path)
 
-@st.cache_data(show_spinner="Model setting proceeds...")
-def Load_chat_model(chosen_llm: str, api_token: str):
-    chat_model = choose_llm_for_chatmodel(chosen_llm, api_token)
-    return chat_model
-
-@st.cache_data(show_spinner="RAG preparation proceeds...")
-def Prepare_for_RAG():
-    papers_json = Read_json(main_path + "\\resource\\Entrez_selected_for_RAG.json")
-    abs_list_raw = list(items["abstract"] for items in papers_json["paper_list"])
-    metadata_list_raw = list(dict(filter(lambda items: items[0] != "abstract", article_dict.items())) for article_dict in papers_json["paper_list"])
-    abs_list, metadata_list = Split_and_format_documents(abs_list_raw, metadata_list_raw)
-    Generate_local_faiss(abs_list, metadata_list, faiss_path)
-
-@st.cache_data(show_spinner="Making diagnosis...")
-def Making_diagnosis(chat_model, _dict: dict):
-    diagnosis_str = Activate_diagnosis_chain(chat_model, _dict)
-    return diagnosis_str
-
-def Setting_session_state():
-    if "RAG_prepare" not in st.session_state:
-        st.session_state.RAG_prepare = "no"
-    if "model_prepare" not in st.session_state:
-        st.session_state.model_prepare = "no"
-    if "progress" not in st.session_state:
-        st.session_state.progress = "Start_state"
-    if "user_data" not in st.session_state:
-        st.session_state["user_data"] = {}
-    if "user_input_instance" not in st.session_state:
-        st.session_state.user_input_instance = ""
-
 def Sidebar():
     global chat_model
     with st.sidebar:
-        chosen_llm = st.selectbox(
-            label="Choose your llm!",
-            options=llm_list,
-            placeholder="choose an option!"
+        # 언어 설정
+        user_language = st.selectbox(
+            label= "LANGUAGE",
+            options= language_list,
+            index= 21,
+            key="user_language",
+            on_change=Cache_language_status
         )
-        api_token = st.text_input(label="Write your huggingface api token!", placeholder="HUGGINGFACEHUB_API_KEY", type="password")
+
+        # ai 모델 설정
+        chosen_llm = st.selectbox(
+            label=st.session_state.system_messages["choice"] + " llm!",
+            options=llm_list,
+        )
+        api_token = st.text_input(label=st.session_state.system_messages["write"]+" huggingface api token!", placeholder="HUGGINGFACEHUB_API_KEY", type="password")
         chat_model = None
         load_model = st.button(
-            label="Load Chat model!",
+            label=st.session_state.system_messages["model"]["request"],
             use_container_width=True,
             )
-        if chosen_llm == "None":
-            st.session_state.model_prepare = "no"
-        if load_model and chosen_llm != "None":
-            st.session_state.model_prepare = "yes"
-        if st.session_state.model_prepare == "yes" and chosen_llm != "None" and api_token:
+        if chosen_llm == "None" or not api_token:
+            st.session_state.model_prepare = False
+        if load_model and chosen_llm != "None" and api_token:
+            st.session_state.model_prepare = True
+        if st.session_state.model_prepare == True and chosen_llm != "None" and api_token:
             chat_model = Load_chat_model(chosen_llm, api_token)
             if chat_model:
-                st.write("Model has been activated!")
-        if st.session_state.RAG_prepare == "no":
+                st.write("LLM "+st.session_state.system_messages["complete"])
+        
+        # RAG를 위한 데이터베이스 생성.
+        # 1회 설정 후에는 재설정하지 않아도 괜찮도록 구현
+        if st.session_state.RAG_prepare == False:
             rag_prepare = st.button(
-                label="Start preparation for RAG!",
+                label=st.session_state.system_messages["RAG"]["request"],
                 use_container_width= True
             )
             if rag_prepare:
-                if not os.path.isdir(faiss_path):
-                    Prepare_for_RAG()
-                st.session_state.RAG_prepare = "yes"
+                if not os.path.isfile(faiss_path+"\\index.faiss"):
+                    Prepare_for_RAG(main_path, faiss_path)
+                st.session_state.RAG_prepare = True
                 st.rerun()
-        if st.session_state.RAG_prepare == "yes":
-            st.write("RAG has been activated!")
-
-def User_input_below():
-    def Submit():
-        st.session_state.user_input_instance = st.session_state.widget
-        st.session_state.widget = ""
-    below_input_bar = st.text_input(label="Send a message to your ai!", key="widget", on_change=Submit)
-    if st.session_state.user_input_instance and st.session_state.progress == "Start_state":
-        st.error("Oh... you might forget to fill the form above! Can you double-check? I need some information about your baby's poop to help you!")
-        st.session_state.user_input_instance = ""
-    if st.session_state.user_input_instance and st.session_state.progress == "information":
-        st.session_state["user_data"]["additional_context"] =  st.session_state.user_input_instance
-        st.session_state.user_input_instance = ""
-        st.rerun()
-
-def Clear():
-    col1, col2, col3 = st.columns(3)
-    with col3:
-        clear_button = st.button(label="CLEAR", use_container_width=True)
-    if clear_button:
-        st.session_state.progress = "Start_state"
-        st.session_state["user_data"] = {}
-        st.session_state.user_input_instance = ""
-        st.rerun()
+        if st.session_state.RAG_prepare == True:
+            st.write("RAG "+st.session_state.system_messages["complete"])
 
 def main():
-    st.title("Chatbot for you!")
-    with st.chat_message("ai"):
-        st.write("""Hi! I'm baby poop expert... And I'm here for YOU! 
-                \nBut wait... I need some information about your baby's poop.
-                \nCan you fill the form below for me to help you?
-                \nOh, I recommend you to do something on your left sidebar first!""")
+    st.title(st.session_state.system_messages["title"])
+    
+    # 대화 로그 출력
+    if st.session_state.memory:
+        for item in st.session_state.memory:
+            st.chat_message(name=item["role"]).write(item["content"])
 
-    with st.expander(label="Tell me some informations about your baby's poop!", expanded=True):
-        with st.form(key="form_first"):
-            poop_color = st.text_input(
-                label="Write your baby's poop color",
-                placeholder="Red or Green or Black... or else"
-            )
-            poop_form = st.select_slider(
-                label="Choose the baby poop's form",
-                options=["severe diarrhea", "diarrhea", "normal", "constipation", "severe constipation"],
-                help="this is your help tooltip",
-                value="normal"
-            )
-            blood_form = st.select_slider(
-                label="Which form you baby's bloody poop?",
-                options=["not-bloody", "bloody",]
-            )
-            baby_poop_information = st.form_submit_button()
-    if baby_poop_information:
-        if not poop_color:
-            st.error("You must tell me about poop color!")
-        else:
-            st.session_state["user_data"]["basic_info"] = {"color": poop_color, "form": poop_form, "blood": blood_form}
+    # ai가 생성한 영어를 유저 언어로 번역하는 인스턴스 호출
+    eng_2_ulang = Messages_translator(st.session_state.user_language, to_eng= False)
+
+    # phase 1: progress = start
+    # 유저한테서 기본적인 정보 받아옴
+    if st.session_state.progress == "start":
+        with st.chat_message("assistant"):
+            st.write(st.session_state.ai_messages["intro"])
+        if st.session_state.user_input_instance:
+            st.error(st.session_state.system_messages["send_to_ai"]["error"])
+            st.session_state.user_input_instance = ""
+        form_item_list = list(Format_form.form_choices_dict.keys())
+        with st.expander(label=st.session_state.system_messages["poop_info_request"], expanded=True):
+            with st.form(key="form_for_basic_info"):
+                for item in form_item_list:
+                    st.radio(
+                        label=st.session_state.system_messages["form"][item]["request"],
+                        options=Format_form(item).format_form_options(),
+                        format_func=Format_form(item).format_form_choices,
+                        key= item,
+                        horizontal= True
+                    )
+                basic_information_submitted = st.form_submit_button()
+        if basic_information_submitted:
+            st.session_state.user_data["basic_info"] = Format_form.format_form_result(
+                args_list=[st.session_state[item] for item in form_item_list]
+                )
+            st.session_state.memory.append({"role": "assistant", "content": st.session_state.ai_messages["intro"]})
+            st.session_state.memory.append({"role": "user", "content": eng_2_ulang.translate(st.session_state.user_data["basic_info"])})
             st.session_state.progress = "information"
+            st.rerun()
     
-    if st.session_state.progress != "Start_state":
-        with st.chat_message("ai"):
-            st.write("The form submitted! You can fold the form above.")
-            st.write(f"Okay. Now I know that your baby's poop was {poop_form}, {poop_color}, and {blood_form}")
-            st.write("Is there something more to tell me about your baby? Tell me about it in one message!")
-    
-    if "additional_context" in st.session_state["user_data"]:
-        with st.chat_message("human"):
-            st.write(st.session_state["user_data"]["additional_context"])
-        with st.chat_message("ai"):
-            st.write("""Do you think the explanation you sent is enough?
-                        \nPlease correct and send the explanation until you are satisfied, and press the button below if you are satisfied""")
-        if st.session_state.progress != "user_qa_end":
-            context_end = st.button("I am satisfied with my explanation.", use_container_width=True)
-            if context_end:
-                st.session_state.progress = "user_qa_end"
+    # phase 2: progress = information
+    # 유저한테 조금 더 디테일한 정보 받아옴
+    if st.session_state.progress == "information":
+        with st.chat_message("assistant"):
+            st.write(st.session_state.ai_messages["form_submitted"])
+        if st.session_state.user_input_instance:
+            st.session_state.user_data["additional_context"] =  st.session_state.user_input_instance
+            st.session_state.user_input_instance = ""
+            st.rerun()
+        if "additional_context" in st.session_state.user_data:
+            with st.chat_message("user"):
+                st.write(st.session_state.user_data["additional_context_ulang"])
+            with st.chat_message("assistant"):
+                st.write(st.session_state.ai_messages["check_user_input"])
+            user_confirmed = st.button(
+                label=st.session_state.user_messages["user_confirmed"],
+                use_container_width=True
+                )
+            if user_confirmed:
+                st.session_state.memory.append({"role": "assistant", "content": st.session_state.ai_messages["form_submitted"]})
+                st.session_state.memory.append({"role": "user", "content": st.session_state.user_data["additional_context_ulang"]})    
+                st.session_state.user_data["symptoms"] = st.session_state.user_data["basic_info"]+"\n"+st.session_state.user_data["additional_context"]
+                st.session_state.progress = "chain"
                 st.rerun()
-    
-    if st.session_state.progress == "user_qa_end":
-        with st.chat_message("human"):
-            st.write("I am satisfied with my explanation.")
-        with st.chat_message("ai"):
-            st.write("""Okay. Just give me a few minutes, or just seconds. I'll help you.""")
-            if st.session_state.RAG_prepare == "yes" and chat_model:
+
+    # phase 3: progess = chain
+    # 유저에게 모든 필요한 정보를 다 받은 경우. 검색 dataset 크기 조정 후 진단 체인 실행
+    if st.session_state.progress in "chain":
+        with st.chat_message("assistant"):
+            st.write(st.session_state.ai_messages["chain"])
+        how_many_search = st.slider(
+            label=st.session_state.system_messages["chain"]["num"],
+            min_value=5,
+            max_value=25,
+            value=15,
+            step= 1,
+        )
+        start_diagnosis = st.button(
+            label=st.session_state.system_messages["chain"]["start"],
+            use_container_width= True
+        )
+        if start_diagnosis:
+            if st.session_state.RAG_prepare == True and chat_model:
                 diagnosis_input_dict= {
-                    "user_data" : st.session_state["user_data"],
-                    "how_many_search" : 20,
+                    "symptoms" : st.session_state.user_data["symptoms"],
+                    "how_many_search" : how_many_search,
                     "faiss_path": faiss_path,
                 }
-                st.write(Activate_diagnosis_chain(chat_model, diagnosis_input_dict))
-            elif st.session_state.RAG_prepare == "no":
-                st.error("You have to prepare RAG thorough left sidebar for me to diagnosis.")
+                st.session_state.diagnosis = chat_model.run(
+                    purpose= "diagnosis",
+                    input= diagnosis_input_dict
+                    )
+                st.session_state.memory.append({"role": "assistant", "content": eng_2_ulang.translate(st.session_state.diagnosis)})
+                st.session_state.progress = "ready_for_chat"
+                st.rerun()
+            elif st.session_state.RAG_prepare == False:
+                st.error(st.session_state.system_messages["RAG"]["error"])
             else:
-                st.error("You have to set a chat model thorough left sidebar for me to diagnosis.")
-                st.session_state.model_prepare = "no"
+                st.error(st.session_state.system_messages["model"]["error"])
+                st.session_state.model_prepare = False
+    
+    # phase 3.5: progress = "ready_for_chat"
+    # chat 시작 전 세팅 필요하면 이곳에서.
+    if st.session_state.progress == "ready_for_chat":
+        with st.chat_message("assistant"):
+            st.write(st.session_state.system_messages["chat"]["start"])
+        start_chat = st.button(
+            label=st.session_state.system_messages["chat"]["label"],
+            use_container_width= True
+        )
+        if start_chat:
+            st.session_state.progress = "chat"
+            st.rerun()
 
+    # phase 4: progress = chat
+    # 진단 기반으로 챗봇 구현
+    if st.session_state.progress == "chat":
+        if chat_model and st.session_state.chat_memory:
+            chat_model.add_memory(st.session_state.chat_memory)
+        elif st.session_state.chat_memory:
+            st.error(st.session_state.system_messages["model"]["error"])
+            st.session_state.model_prepare = False
+        if st.session_state.user_input_instance:
+            chat_input = {
+                "symptoms":st.session_state.user_data["symptoms"],
+                "query": st.session_state.user_input_instance,
+                "diagnosis": st.session_state.diagnosis,
+                "faiss_path": faiss_path}
+            chat_answer = chat_model.run(
+                purpose="chat",
+                input= chat_input
+            )
+            st.session_state.chat_memory.append({"input": st.session_state.user_input_instance, "output": chat_answer})
+            st.session_state.memory.append({"role": "user", "content": st.session_state.user_data["chat_input_ulang"]})
+            st.session_state.memory.append({"role": "assistant", "content": eng_2_ulang.translate(chat_answer)})
+            st.session_state.user_input_instance = ""
+            st.rerun()
+
+    # 하단 입력 공간과 대화 초기화 버튼
     User_input_below()
     Clear()
 
+
 if __name__ == "__main__":
-    st.set_page_config(
-        page_title="Azang Health"
-    )
-    Setting_path()
-    Setting_session_state()
+    Setting()
     Sidebar()
     main()
