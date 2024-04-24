@@ -56,7 +56,7 @@ def Sidebar():
                 use_container_width= True
             )
             if rag_prepare:
-                if not os.path.isfile(faiss_path+"\\index.faiss"):
+                if not os.path.isfile(os.path.join(faiss_path, "index.faiss")):
                     Prepare_for_RAG(main_path, faiss_path)
                 st.session_state.RAG_prepare = True
                 st.rerun()
