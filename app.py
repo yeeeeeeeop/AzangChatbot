@@ -12,7 +12,7 @@ def Setting():
     Setting_language()
     global main_path, faiss_path
     main_path = os.getcwd()
-    faiss_path = main_path+"\\ForFAISS"
+    faiss_path = os.path.join(main_path, "ForFAISS")
     if not os.path.isdir(faiss_path):
         os.mkdir(faiss_path)
 
