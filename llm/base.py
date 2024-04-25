@@ -5,10 +5,10 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 llm_list = [
             "None",
+            "Mistral (7b/instruct/v0.2)",
             "Zephyr (7b/beta)",
             "Gemma (7b/instruct/v1.1)",
-            "(!error on now) Mistral (7b/instruct/v0.2)",
-            "(!error on now) Mistral (7b/instruct/v0.1)"
+            "Mistral (7b/instruct/v0.1)"
             ]
 
 class Chat_model():
@@ -16,8 +16,8 @@ class Chat_model():
         "Zephyr (7b/beta)": "HuggingFaceH4/zephyr-7b-beta",
         "Gemma (7b/instruct/v1.1)": "google/gemma-1.1-7b-it",
         "(Bad perfomance) Falcon (7b/instruct)": "tiiuae/falcon-7b-instruct",
-        "(!error on now) Mistral (7b/instruct/v0.2)": "mistralai/Mistral-7B-Instruct-v0.2",
-        "(!error on now) Mistral (7b/instruct/v0.1)": "mistralai/Mistral-7B-Instruct-v0.1"
+        "Mistral (7b/instruct/v0.2)": "mistralai/Mistral-7B-Instruct-v0.2",
+        "Mistral (7b/instruct/v0.1)": "mistralai/Mistral-7B-Instruct-v0.1"
     }
 
     def __init__(self, llm: str, api_key: str):
