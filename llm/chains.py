@@ -1,3 +1,4 @@
+import re
 from operator import itemgetter
 from langchain.schema.runnable import RunnableLambda
 from utils.util import Add_diagnostic_contexts, Add_chat_context
@@ -6,21 +7,31 @@ def Activate_diagnosis_chain(chat_model, main_prompt, evaluate_each_prompt, diag
     """
     _dict should be {"user_data": something, "how_many_search": int, "faiss_path": faiss_path}
     """
+    def add_score(_dict:dict) -> dict:
+        evaluate_each_chain = evaluate_each_prompt | chat_model
+        res = evaluate_each_chain.invoke(_dict)
+        try:
+            score = re.match(r"^\d([.]\d+)?", res.content).group(0)
+        except:
+            score = "0"
+        _dict["score"] = score
+        return _dict
+    def make_comment(_dict: dict):
+        if float(_dict["score"]) < 0.3:
+            comment = "The patient is likely to be healthy. The symptoms are not clinically important when regarding the context."
+        else:
+            comment_chain = diagnose_each_prompt | chat_model
+            comment = comment_chain.invoke(_dict).content
+        return comment
     def map_diagnosis(_dict: dict) -> str:
         text = ""
-        evaluate_each_chain = evaluate_each_prompt | chat_model
-        diagnose_each_chain = diagnose_each_prompt | chat_model
         for item in _dict["context_list"]:
-            diagnosis_map_chain = {
-                "symptoms": itemgetter("symptoms"),
-                "context": itemgetter("context"),
-                "score": evaluate_each_chain
-                } | diagnose_each_chain
+            diagnosis_map_chain = RunnableLambda(add_score) | RunnableLambda(make_comment)
             res = diagnosis_map_chain.invoke({
                 "symptoms": _dict["symptoms"],
                 "context": item
             })
-            text += res.content+"\n"
+            text += res+"\n===\n"
         return text
 
     diagnosis_chain = {

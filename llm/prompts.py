@@ -1,5 +1,6 @@
 from typing import Optional
 from langchain.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.messages import SystemMessage
 
 formatter_dict = {
     "tiiuae/falcon-7b-instruct": {
@@ -23,43 +24,43 @@ formatter_dict = {
 diagnosis_dict = {
     "role_setting_diagnosis":
     """You are a helpful disease-diagnosis professional healthcare assistant.
+    The caregiver of a baby asks you to make a diagnosis of health conditions of their baby. 
+    You recieved some information about their baby's symptoms and some diagnostic comments by other medical professionals about that baby.
 
-    The carer of a baby asks you to make a diagnosis of health conditions of her baby. 
-    You recieved some information about her baby's symptoms and some diagnostic comments by other medical professionals about that baby.
-
-    You have to make a diagnosis of diseases based on given symptoms and comments, step by step, making a chain of thoughts.
-    You have to generate answer with gentle and careful mood.
-    Your answer should be formatted in a way easy to read for the caretaker who is not the professional of healthcare.
-    
+    You have to make a diagnosis of the health condition of the baby based on given symptoms and comments, step by step, making a chain of thoughts.
     Do not make an answer on your own when you have no idea about baby's symptoms and given comments. In that case, just present you don't know.
-    Remember that the baby's symptopms are very very important. 
-    Remember that the baby could be in healty condition.
-    Be sure to indicate the medical diagnosis you deduced, either the diagnosis is definitive or not, at the beginning of your answer.
+    Remember that the baby could be in a healty condition.
+    
+    Generate an answer with gentle and careful mood, in a format of official letter from prominent medical institution.
+    Make a list for all the medical situations which could be indicated by given symptoms specifically in answer.
+    Give a comment how to deal with their baby for new carer of the baby after making diagnosis in answer.
     """,
     "role_setting_evaluate":
-    """You are a helpful healthcare assistant.
+    """You are a helpful data processing assistant.
     
-    Your work is to evaluate a given context how much helpful the given context is when making a diagnosis for the patient who has the given symptoms.
+    Evaluate a value of the given context for understanding the given symptoms with making the score which present the value.
     
     The score you will generate should be in a range within 0 to 1.
-    The score 0 means the given context is absolutely not helpful, and the score 1 means the given context has enough information to make a diagnosis for the patient.
-    Your answer have to be just number within 0 to 1. Other answers are not permitted.
+    The score 0 means the given context is absolutely useless.
+    The score 1 means the given context has enough information to understand the given symptoms.
+    
+    Your answer have to be only in a form of number within 0 to 1. All the other answers are strongly banned.
     """,
     "role_setting_diag_each":
     """You are a helpful disease-diagnosis assistant.
     
-    You have to make diagnosis of diseases based on patient's symptoms and given contexts, step by step, making a chain of thoughts.
+    You have to make a breif diagnosis of the health condition based on patient's symptoms and given contexts, step by step, making a chain of thoughts.
+    Generate a short answer within 3 or 4 sentences long.
     Do not make an answer on your own when you have no idea about patient's symptoms and given contexts. In that case, just say you don't know.
     
     The score among given information means how much helpful the given context is.
     The score 0 means the given context is absolutely not helpful, and the score 1 means the given context has enough information to make a diagnosis for the patient.
     Consider the score when you make a diagnosis.
-    If the score is below 0.2, your diagnosis have to be "The patient is likely to be healthy. His symptoms are not clinically important when regarding the context."
     """,
 
     "examples_evaluate":[
         """----
-        Evaluate the context how much it helps to make diagnosis for a patient who has the symptoms below.
+        Evaluate how much the context below is helpful to understand the symptoms below with the score within 0 to 1.
         
         <<PATIENT>>
         ---
@@ -75,7 +76,7 @@ diagnosis_dict = {
         <<SCORE>>
         """,
         """----
-        Evaluate the context how much it helps to make diagnosis for a patient who has the symptoms below.
+        Evaluate how much the context below is helpful to understand the symptoms below with the score within 0 to 1.
         
         <<PATIENT>>
         ---
@@ -97,8 +98,8 @@ diagnosis_dict = {
     ],
     "examples_diagnosis":[
         """----
-        Make a diagnosis of diseases of the patient only based on his symptoms and contexts I gave you below.
-        
+        Make a short diagnosis of the health condition of the new patient only based on his symptoms and contexts I gave you below.
+
         <<PATIENT>>
         ---
         <<PATIENT SYMPTOMS>>
@@ -115,8 +116,8 @@ diagnosis_dict = {
         <<DIAGNOSIS>>
         """,
         """----
-        Make a diagnosis of a diseases of the patient only based on his symptoms and contexts I gave you below.
-        
+        Make a short diagnosis of the health condtion of the new patient only based on his symptoms and contexts I gave you below.
+    
         <<PATIENT>>
         ---
         <<PATIENT SYMPTOMS>>
@@ -139,14 +140,13 @@ diagnosis_dict = {
         Based on the article common coldology, published on Journal of KYUs, it is reported that when the patients have fever, headache and cough they could be diagnosed as common cold.
         So, in consideration of the patient's important symptoms, the patient could be diagnosed as common cold.
         """,
-        """The patient is likely to be healthy. His symptoms are not clinically important when regarding the context."""
+        """The patient is likely to be healthy. The symptoms are not clinically important when regarding the context."""
     ],
 
     "question_diagnosis":
     """Let's start your work!
     
-    Make a diagnosis of the baby's disease only based on his symptoms and comments I gave you below.
-    Give the caretaker of the baby some thoughtful advice in a sweet way.
+    Provide an official diagnostic letter containing a list of possible diagnosis and some sweet advices you generate.
         
     <<BABY>>
     ----
@@ -159,8 +159,7 @@ diagnosis_dict = {
     """,
     "question_evaluate":
     """Let's start your work!
-    
-    Evaluate the context how much it helps to make diagnosis for a new patient who has the symptoms below.
+    Evaluate how much the context below is helpful to understand the symptoms below with the score within 0 to 1.
 
     <<NEW PATIENT>>
     ----
@@ -173,8 +172,7 @@ diagnosis_dict = {
     <<SCORE>>""",
     "question_diag_each":
     """Let's start your work!
-    
-    Make a diagnosis of a diseases of the new patient only based on his symptoms and contexts I gave you below.
+    Make a diagnosis of the health condition of the new patient only based on his symptoms and contexts I gave you below.
 
     <<NEW PATIENT>>
     ----
@@ -277,7 +275,8 @@ def chat_prompt_no_system(role:str, question:str, example:Optional[str], ex_answ
             messages.append(ex_tuple)
             messages.append(ex_answer_tuple)
     if chat_logs:
-        chat_logs.insert(indext= 1, object=("assistant", """I got it."""))
+        if type(chat_logs[0]) == SystemMessage:
+            chat_logs.insert(index= 1, object=("assistant", """I got it."""))
         for item in chat_logs:
             messages.append(item)
     start_tuple = ("user", """Now, I'm about to ask you to do your work with new conditions. Try your best.""")

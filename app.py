@@ -135,8 +135,8 @@ def main():
             st.write(st.session_state.ai_messages["chain"])
         how_many_search = st.slider(
             label=st.session_state.system_messages["chain"]["num"],
-            min_value=5,
-            max_value=25,
+            min_value=10,
+            max_value=70,
             value=15,
             step= 1,
         )
@@ -151,10 +151,11 @@ def main():
                     "how_many_search" : how_many_search,
                     "faiss_path": faiss_path,
                 }
-                st.session_state.diagnosis = chat_model.run(
-                    purpose= "diagnosis",
-                    input= diagnosis_input_dict
-                    )
+                with st.status(label="Making diagnosis"):
+                    st.session_state.diagnosis = chat_model.run(
+                        purpose= "diagnosis",
+                        input= diagnosis_input_dict
+                        )
                 st.session_state.memory.append({"role": "assistant", "content": eng_2_ulang.translate(st.session_state.diagnosis)})
                 st.session_state.progress = "ready_for_chat"
                 st.rerun()

@@ -13,6 +13,7 @@ llm_list = [
 
 class Chat_model():
     llms = {
+        "GPT-3.5-turbo": "gpt",
         "Zephyr (7b/beta)": "HuggingFaceH4/zephyr-7b-beta",
         "Gemma (7b/instruct/v1.1)": "google/gemma-1.1-7b-it",
         "(Bad perfomance) Falcon (7b/instruct)": "tiiuae/falcon-7b-instruct",
@@ -28,7 +29,15 @@ class Chat_model():
     
     def run(self, purpose: str, input: dict, *args, **kwargs):
         self.__validate_purpose(purpose)
-        model = self.__set_model()
+        if self.__llm == "gpt":
+            from langchain.chat_models.openai import ChatOpenAI
+            model = ChatOpenAI(
+                temperature=0.1,
+                max_tokens=4096,
+                model="gpt-3.5-turbo-0125",
+                )
+        else:
+            model = self.__set_model()
 
         if self.__purpose == "diagnosis":
             from llm.chains import Activate_diagnosis_chain
@@ -68,7 +77,8 @@ class Chat_model():
             raise KeyError("Only two purposes are permitted: diagnosis or chat")
 
     def __categorize_model(self):
-        if self.__llm in ["HuggingFaceH4/zephyr-7b-beta"]:
+        if self.__llm in ["HuggingFaceH4/zephyr-7b-beta",
+                          "gpt"]:
             self.__category = "chat_with_system"
         if self.__llm in ["google/gemma-1.1-7b-it",
                           "mistralai/Mistral-7B-Instruct-v0.2",
@@ -94,10 +104,12 @@ class Chat_model():
             summary_cls = SystemMessage
         if self.__category == "chat_without_system":
             summary_cls = HumanMessage
+        if self.__llm == "gpt":
+            from langchain.chat_models.openai import ChatOpenAI
         self.__memory = ConversationSummaryBufferMemory(
             human_prefix= "user",
             ai_prefix= "assistant",
-            llm= self.__set_llm(),
+            llm= self.__set_llm() if self.__llm != "gpt" else ChatOpenAI(temperature=0.1),
             input_key= "input",
             output_key= "output",
             summary_message_cls= summary_cls,
