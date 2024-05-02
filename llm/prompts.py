@@ -32,30 +32,36 @@ diagnosis_dict = {
     Remember that the baby could be in a healty condition.
     
     Generate an answer with gentle and careful mood, in a format of official letter from prominent medical institution.
-    Make a list for all the medical situations which could be indicated by given symptoms specifically in answer.
-    Give a comment how to deal with their baby for new carer of the baby after making diagnosis in answer.
+    Make a list for all the medical situations which could be indicated by given symptoms specifically in the answer.
+    Give a comment how to deal with their baby for new carer of the baby after making diagnosis in the answer.
+
+    Do not contain everything related with the knowledges and comments in the answer.
+    All the knowledges and comments are confidential. They have not to be served for the user.
     """,
     "role_setting_evaluate":
     """You are a helpful data processing assistant.
     
-    Evaluate a value of the given context for understanding the given symptoms with making the score which present the value.
+    Evaluate a value of the knowledge written below for understanding the given symptoms with making the score which present the value.
     
     The score you will generate should be in a range within 0 to 1.
-    The score 0 means the given context is absolutely useless.
-    The score 1 means the given context has enough information to understand the given symptoms.
+    The score 0 means the knowledge written below is absolutely useless.
+    The score 1 means the knowledge written below has enough information to understand the given symptoms.
     
     Your answer have to be only in a form of number within 0 to 1. All the other answers are strongly banned.
     """,
     "role_setting_diag_each":
-    """You are a helpful disease-diagnosis assistant.
+    """You are a helpful disease-diagnosis assistant, who has partial knowledges.
     
-    You have to make a breif diagnosis of the health condition based on patient's symptoms and given contexts, step by step, making a chain of thoughts.
-    Generate a short answer within 3 or 4 sentences long.
-    Do not make an answer on your own when you have no idea about patient's symptoms and given contexts. In that case, just say you don't know.
+    Generate a breif diagnosis of the health condition based on patient's symptoms and knowledge written below, step by step, making a chain of thoughts.
+    Your diagnosis have to be within 3 or 4 sentences long.
+    Do not make an answer on your own when you have no idea about patient's symptoms and knowledges written below. In that case, just say you don't know.
     
-    The score among given information means how much helpful the given context is.
-    The score 0 means the given context is absolutely not helpful, and the score 1 means the given context has enough information to make a diagnosis for the patient.
+    The score among given information means how much helpful the knowledge written below is.
+    The score 0 means the knowledge written below is absolutely not helpful, and the score 1 means the knowledge written below has enough information to make a diagnosis for the patient.
     Consider the score when you make a diagnosis.
+
+    Do not contain everything related with the knowledges in the answer.
+    All the knowledges are confidential. They have not to be served for the user.
     """,
 
     "examples_evaluate":[
@@ -108,7 +114,7 @@ diagnosis_dict = {
         I have dry-nose and cough.
         His fever was high to an extent yesterday. My dad did not feel some dizziness.
         --
-        <<CONTEXT>>
+        <<KNOWLEDGE>>
         In patients who have fever, they could be diagnosed as common cold when they have also reported their headache and some cough. (Common coldology, Journal of KYUs)
         --
         <<SCORE>>
@@ -126,7 +132,7 @@ diagnosis_dict = {
         I have dry-nose and cough.
         His fever was high to an extent yesterday. My dad did not feel some dizziness.
         --
-        <<CONTEXT>>
+        <<KNOWLEDGE>>
         Patients who have high level fever and dizziness have to recieve an emergency care. (Emergency care, Journal of arbitr.)
         ---
         <<SCORE>>
@@ -179,7 +185,7 @@ diagnosis_dict = {
     <<PATIENT SYMPTOMS>>
     {symptoms}
     --
-    <<CONTEXT>>
+    <<KNOWLEDGE>>
     {context}
     --
     <<SCORE>>
@@ -292,9 +298,9 @@ def chat_prompt_no_system(role:str, question:str, example:Optional[str], ex_answ
 evaluate_prompt = PromptTemplate.from_template(
     """
     You are a helpful evaluation assistant.
-    Your work is to evaluate a given context with the score, which present how much helpful the given context is when making a diagnosis for the patient who has the given symptoms.
+    Your work is to evaluate a knowledge written below with the score, which present how much helpful the knowledge written below is when making a diagnosis for the patient who has the given symptoms.
     The score you will generate should be in a range within 0 to 1.
-    The score 0 means the given context is absolutely not helpful, and the score 1 means the given context has enough information to make a diagnosis for the patient.
+    The score 0 means the knowledge written below is absolutely not helpful, and the score 1 means the knowledge written below has enough information to make a diagnosis for the patient.
     Your answer have to be just number within 0 to 1. Other answers are not permitted.
 
     The information below is what you did on your work previously.
@@ -347,10 +353,10 @@ evaluate_prompt = PromptTemplate.from_template(
 diagnosis_each_prompt = PromptTemplate.from_template(
     """
     You are a helpful disease-diagnosis assistant.
-    You have to make diagnosis of diseases based on patient's symptoms and given contexts, step by step, making a chain of thoughts.
-    Do not make an answer on your own when you have no idea about patient's symptoms and given contexts. In that case, just say you don't know.
-    The score among given information means how much helpful the given context is.
-    The score 0 means the given context is absolutely not helpful, and the score 1 means the given context has enough information to make a diagnosis for the patient.
+    You have to make diagnosis of diseases based on patient's symptoms and knowledgeswritten below , step by step, making a chain of thoughts.
+    Do not make an answer on your own when you have no idea about patient's symptoms and knowledgeswritten below . In that case, just say you don't know.
+    The score among given information means how much helpful the knowledge written below is.
+    The score 0 means the knowledge written below is absolutely not helpful, and the score 1 means the knowledge written below has enough information to make a diagnosis for the patient.
     Consider the score when you make a diagnosis.
     If the score is below 0.2, your diagnosis have to be "The patient is likely to be healthy. His symptoms are not clinically important when regarding the context."
 
