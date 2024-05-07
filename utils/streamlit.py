@@ -1,7 +1,7 @@
 import streamlit as st
 from llm.base import Chat_model
 from utils.messages import UI_messages, Messages_translator
-from utils.util import Read_json, Split_and_format_documents, Generate_local_faiss
+from utils.util import RAG_prepare
 
 def Setting_session_state():
     if "RAG_prepare" not in st.session_state:
@@ -16,6 +16,8 @@ def Setting_session_state():
         st.session_state.diagnosis = ""
     if "user_input_instance" not in st.session_state:
         st.session_state.user_input_instance = ""
+    if "form_index" not in st.session_state:
+        st.session_state.form_index = ""
     if "user_data" not in st.session_state:
         st.session_state.user_data = {}
     if "system_messages" not in st.session_state:
@@ -70,6 +72,7 @@ def Clear():
         st.session_state.memory = []
         st.session_state.chat_memory = []
         st.session_state.diagnosis = ""
+        st.session_state.form_index = ""
         st.rerun()
 
 @st.cache_data(show_spinner="WAIT...")
@@ -79,11 +82,7 @@ def Load_chat_model(chosen_llm: str, api_token: str):
 
 @st.cache_data(show_spinner="WAIT...")
 def Prepare_for_RAG(main_path, faiss_path):
-    papers_json = Read_json(os.path.join(main_path, "resource", "Entrez_selected_for_RAG.json"))
-    abs_list_raw = list(items["abstract"] for items in papers_json["paper_list"])
-    metadata_list_raw = list(dict(filter(lambda items: items[0] != "abstract", article_dict.items())) for article_dict in papers_json["paper_list"])
-    abs_list, metadata_list = Split_and_format_documents(abs_list_raw, metadata_list_raw)
-    Generate_local_faiss(abs_list, metadata_list, faiss_path)
+    RAG_prepare(main_path, faiss_path)
 
 class Format_form:
     form_choices_dict, form_suffix_dict = UI_messages.format_messages_for_form()
@@ -116,5 +115,5 @@ class Format_form:
         text: str = ""
         for item in args_list:
             label_key = label_keys_list[int(item[0])]
-            text += suffix[label_key]+" "+cls.form_choices_dict[label_key][int(item[1])]+".\n"
+            text += suffix[label_key].format(contents= cls.form_choices_dict[label_key][int(item[1])])+"\n"
         return text

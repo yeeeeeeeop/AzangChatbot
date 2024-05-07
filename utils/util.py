@@ -1,3 +1,4 @@
+import os
 import json
 from langchain.vectorstores.faiss import FAISS
 from langchain_community.embeddings.huggingface import HuggingFaceEmbeddings
@@ -34,6 +35,12 @@ def Generate_local_faiss(abs_list, metadata_list, faiss_path):
     vectordb_RAG = FAISS.from_texts(texts=abs_list, embedding=hf_embedding, metadatas=metadata_list)
     vectordb_RAG.save_local(folder_path=faiss_path)
 
+def RAG_prepare(main_path, faiss_path):
+    papers_json = Read_json(os.path.join(main_path, "resource", "Entrez_selected_for_RAG.json"))
+    abs_list_raw = list(items["abstract"] for items in papers_json["paper_list"])
+    metadata_list_raw = list(dict(filter(lambda items: items[0] != "abstract", article_dict.items())) for article_dict in papers_json["paper_list"])
+    abs_list, metadata_list = Split_and_format_documents(abs_list_raw, metadata_list_raw)
+    Generate_local_faiss(abs_list, metadata_list, faiss_path)
 
 def Add_diagnostic_contexts(_dict: dict) -> dict:
     vectordb_RAG = FAISS.load_local(folder_path=_dict["faiss_path"], embeddings=hf_embedding, allow_dangerous_deserialization=True)

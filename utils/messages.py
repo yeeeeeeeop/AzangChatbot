@@ -89,39 +89,45 @@ class UI_messages(Messages_translator):
         "poop_info_request":
         """Tell me some informations about your baby's poop!""",
         "form": {
+            "day_info" : {
+                "request":
+                """How many days has it been since the baby started to defecate as below?""",
+                "contents":
+                ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+                "suffix":
+                """{contents} days ago,"""
+                },
             "color_info" : {
                 "request" :
-                """Write your baby's poop color.""",
+                """What was the color of your baby's stool?""",
                 "contents":
-                ["Red", "Green", "Black", "White", "Brown", "Ambiguous"],
+                ["red", "green", "black", "white", "brown", "ambiguous"],
                 "suffix":
-                """The stool color of my baby was""",
-                "error":
-                """You must tell me about poop color!"""
+                """The color of my baby's stool was {contents}."""
                 },
             "form_info" : {
                 "request":
-                """Choose the stool scale.""",
+                """What was the baby's fecal form like?""",
                 "contents":
                 ["very hard", "hard", "a little hard", "formed", "loose", "very loose", "watery"],
                 "suffix":
-                """The form of my baby's stool was"""
+                """My baby's stool was in the form of {contents} material."""
                 },
             "blood_info" : {
                 "request":
-                """Does your baby's poop have any blood?""",
+                """Did your baby's feces have any blood?""",
                 "contents":
-                ["none", "subtle", "red jelly", "red mucus", "melena", "line", "isolated snot", "grain"],
+                ["none of", "subtle", "red jelly shaped", "red mucus shaped", "melena", "linear shaped", "isolated snot shaped", "grain shaped"],
                 "suffix":
-                """The blood was spreaded on my baby's stool like"""
+                """The {contents} blood was seen at my baby's stool."""
                 },
             "property_info" : {
                 "request":
-                """Is there something special on your baby's poop?""",
+                """Was there something special on your baby's stool?""",
                 "contents":
-                ["none", "protein lumps", "mucus"],
+                ["nothing", "many amounts of protein lumps", "little amounts of protein lumps", "lots of mucus", "little mucus"],
                 "suffix":
-                """On my baby's poop, there is"""
+                """On the stool of my baby, there is {contents} remarkable."""
             }
             },
         "RAG":{

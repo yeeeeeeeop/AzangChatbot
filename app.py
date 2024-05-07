@@ -82,22 +82,36 @@ def main():
         if st.session_state.user_input_instance:
             st.error(st.session_state.system_messages["send_to_ai"]["error"])
             st.session_state.user_input_instance = ""
+        form_num = st.slider(
+            label="How many data do you have?",
+            min_value=1,
+            max_value=7,
+            step=1,
+            value=1,
+        )
         form_item_list = list(Format_form.form_choices_dict.keys())
-        with st.expander(label=st.session_state.system_messages["poop_info_request"], expanded=True):
-            with st.form(key="form_for_basic_info"):
-                for item in form_item_list:
-                    st.radio(
-                        label=st.session_state.system_messages["form"][item]["request"],
-                        options=Format_form(item).format_form_options(),
-                        format_func=Format_form(item).format_form_choices,
-                        key= item,
-                        horizontal= True
-                    )
-                basic_information_submitted = st.form_submit_button()
-        if basic_information_submitted:
-            st.session_state.user_data["basic_info"] = Format_form.format_form_result(
-                args_list=[st.session_state[item] for item in form_item_list]
-                )
+        for i in range(form_num):
+            if i < len(st.session_state.form_index):
+                st.info(f"""{st.session_state.user_data[f"info_{i}"]}""")
+            else:
+                with st.form(key=f"form_number_{i}"):
+                    for item in form_item_list:
+                        st.radio(
+                            label=st.session_state.system_messages["form"][item]["request"],
+                            options=Format_form(item).format_form_options(),
+                            format_func=Format_form(item).format_form_choices,
+                            key= item + str(i),
+                            horizontal= True
+                        )
+                    basic_information_submitted = st.form_submit_button()
+                if basic_information_submitted:
+                    st.session_state.user_data[f"info_{i}"] = Format_form.format_form_result(
+                        args_list=[st.session_state[item + str(i)] for item in form_item_list]
+                        )
+                    st.session_state.form_index += "."
+                    st.rerun()
+        if len(st.session_state.form_index) == form_num:
+            st.session_state.user_data["basic_info"] = "\n\n".join([st.session_state.user_data[f"info_{i}"] for i in range(form_num)])
             st.session_state.memory.append({"role": "assistant", "content": st.session_state.ai_messages["intro"]})
             st.session_state.memory.append({"role": "user", "content": eng_2_ulang.translate(st.session_state.user_data["basic_info"])})
             st.session_state.progress = "information"
@@ -157,26 +171,13 @@ def main():
                         input= diagnosis_input_dict
                         )
                 st.session_state.memory.append({"role": "assistant", "content": eng_2_ulang.translate(st.session_state.diagnosis)})
-                st.session_state.progress = "ready_for_chat"
+                st.session_state.progress = "chat"
                 st.rerun()
             elif st.session_state.RAG_prepare == False:
                 st.error(st.session_state.system_messages["RAG"]["error"])
             else:
                 st.error(st.session_state.system_messages["model"]["error"])
                 st.session_state.model_prepare = False
-    
-    # phase 3.5: progress = "ready_for_chat"
-    # chat 시작 전 세팅 필요하면 이곳에서.
-    if st.session_state.progress == "ready_for_chat":
-        with st.chat_message("assistant"):
-            st.write(st.session_state.system_messages["chat"]["start"])
-        start_chat = st.button(
-            label=st.session_state.system_messages["chat"]["label"],
-            use_container_width= True
-        )
-        if start_chat:
-            st.session_state.progress = "chat"
-            st.rerun()
 
     # phase 4: progress = chat
     # 진단 기반으로 챗봇 구현
