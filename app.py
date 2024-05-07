@@ -140,7 +140,7 @@ def main():
 
     # phase 3: progess = chain
     # 유저에게 모든 필요한 정보를 다 받은 경우. 검색 dataset 크기 조정 후 진단 체인 실행
-    if st.session_state.progress in "chain":
+    if st.session_state.progress == "chain":
         with st.chat_message("assistant"):
             st.write(st.session_state.ai_messages["chain"])
         how_many_search = st.slider(
