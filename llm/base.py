@@ -111,7 +111,7 @@ class Chat_model():
         self.__memory = ConversationSummaryBufferMemory(
             human_prefix= "user",
             ai_prefix= "assistant",
-            llm= self.__set_llm() if self.__llm != "gpt-3.5-turbo-0125" else ChatOpenAI(temperature=0.1),
+            llm= self.__set_llm() if self.__llm != "gpt-3.5-turbo-0125" else ChatOpenAI(temperature=0.1, api_key=self.__api),
             input_key= "input",
             output_key= "output",
             summary_message_cls= summary_cls,
