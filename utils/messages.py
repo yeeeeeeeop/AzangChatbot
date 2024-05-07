@@ -101,20 +101,28 @@ class UI_messages(Messages_translator):
                 },
             "form_info" : {
                 "request":
-                """Choose the baby poop's form""",
+                """Choose the stool scale.""",
                 "contents":
-                ["severe diarrhea", "diarrhea", "normal", "constipation", "severe constipation"],
+                ["very hard", "hard", "a little hard", "formed", "loose", "very loose", "watery"],
                 "suffix":
-                """The stool of my baby was"""
+                """The form of my baby's stool was"""
                 },
             "blood_info" : {
                 "request":
                 """Does your baby's poop have any blood?""",
                 "contents":
-                ["not-bloody", "bloody"],
+                ["none", "subtle", "red jelly", "red mucus", "melena", "line", "isolated snot", "grain"],
                 "suffix":
-                """The stool of my baby seemed to be"""
-                }
+                """The blood was spreaded on my baby's stool like"""
+                },
+            "property_info" : {
+                "request":
+                """Is there something special on your baby's poop?""",
+                "contents":
+                ["none", "protein lumps", "mucus"],
+                "suffix":
+                """On my baby's poop, there is"""
+            }
             },
         "RAG":{
             "request":
