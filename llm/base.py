@@ -35,6 +35,7 @@ class Chat_model():
             model = ChatOpenAI(
                 temperature=0.1,
                 max_tokens=2048,
+                api_key= self.__api,
                 model="gpt-3.5-turbo-0125",
                 )
         else:
