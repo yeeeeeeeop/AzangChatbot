@@ -36,7 +36,8 @@ def Activate_diagnosis_chain(chat_model, main_prompt, evaluate_each_prompt, diag
 
     diagnosis_chain = {
         "symptoms": itemgetter("symptoms"),
-        "comments": RunnableLambda(Add_diagnostic_contexts) | RunnableLambda(map_diagnosis)
+        "comments": RunnableLambda(Add_diagnostic_contexts) | RunnableLambda(map_diagnosis),
+        "language": itemgetter("language")
         } | main_prompt | chat_model
     
     res = diagnosis_chain.invoke(_dict).content

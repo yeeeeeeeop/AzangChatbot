@@ -1,7 +1,6 @@
 import os
 import streamlit as st
-from llm.base import llm_list
-from utils.messages import language_list, Messages_translator
+from llm.base import llm_list, Chat_model
 from utils.streamlit import *
 
 def Setting():
@@ -17,23 +16,23 @@ def Setting():
         os.mkdir(faiss_path)
 
 def Sidebar():
-    global chat_model
+    global chat_model, user_language
     with st.sidebar:
         # 언어 설정
         user_language = st.selectbox(
             label= "LANGUAGE",
-            options= language_list,
-            index= 21,
+            options= ["english", "korean"],
+            index= 0,
             key="user_language",
             on_change=Cache_language_status
         )
 
         # ai 모델 설정
         chosen_llm = st.selectbox(
-            label=st.session_state.system_messages["choice"] + " llm!",
+            label=st.session_state.system_messages["choice"],
             options=llm_list,
         )
-        api_token = st.text_input(label=st.session_state.system_messages["write"]+" huggingface api token!", placeholder="HUGGINGFACEHUB_API_KEY", type="password")
+        api_token = st.text_input(label=st.session_state.system_messages["write"], placeholder="HuggingfaceHub or OpenAI", type="password")
         chat_model = None
         load_model = st.button(
             label=st.session_state.system_messages["model"]["request"],
@@ -44,7 +43,7 @@ def Sidebar():
         if load_model and chosen_llm != "None" and api_token:
             st.session_state.model_prepare = True
         if st.session_state.model_prepare == True and chosen_llm != "None" and api_token:
-            chat_model = Load_chat_model(chosen_llm, api_token)
+            chat_model = Chat_model(chosen_llm, api_token)
             if chat_model:
                 st.write("LLM "+st.session_state.system_messages["complete"])
         
@@ -71,9 +70,6 @@ def main():
         for item in st.session_state.memory:
             st.chat_message(name=item["role"]).write(item["content"])
 
-    # ai가 생성한 영어를 유저 언어로 번역하는 인스턴스 호출
-    eng_2_ulang = Messages_translator(st.session_state.user_language, to_eng= False)
-
     # phase 1: progress = start
     # 유저한테서 기본적인 정보 받아옴
     if st.session_state.progress == "start":
@@ -83,7 +79,7 @@ def main():
             st.error(st.session_state.system_messages["send_to_ai"]["error"])
             st.session_state.user_input_instance = ""
         form_num = st.slider(
-            label="How many data do you have?",
+            label=st.session_state.system_messages["choose_number_of_data"],
             min_value=1,
             max_value=7,
             step=1,
@@ -113,7 +109,7 @@ def main():
         if len(st.session_state.form_index) == form_num:
             st.session_state.user_data["basic_info"] = "\n\n".join([st.session_state.user_data[f"info_{i}"] for i in range(form_num)])
             st.session_state.memory.append({"role": "assistant", "content": st.session_state.ai_messages["intro"]})
-            st.session_state.memory.append({"role": "user", "content": eng_2_ulang.translate(st.session_state.user_data["basic_info"])})
+            st.session_state.memory.append({"role": "user", "content": st.session_state.user_data["basic_info"]})
             st.session_state.progress = "information"
             st.rerun()
     
@@ -164,13 +160,14 @@ def main():
                     "symptoms" : st.session_state.user_data["symptoms"],
                     "how_many_search" : how_many_search,
                     "faiss_path": faiss_path,
+                    "language": st.session_state.user_language
                 }
                 with st.status(label="Making diagnosis"):
                     st.session_state.diagnosis = chat_model.run(
                         purpose= "diagnosis",
                         input= diagnosis_input_dict
                         )
-                st.session_state.memory.append({"role": "assistant", "content": eng_2_ulang.translate(st.session_state.diagnosis)})
+                st.session_state.memory.append({"role": "assistant", "content": st.session_state.diagnosis})
                 st.session_state.progress = "chat"
                 st.rerun()
             elif st.session_state.RAG_prepare == False:
@@ -199,7 +196,7 @@ def main():
             )
             st.session_state.chat_memory.append({"input": st.session_state.user_input_instance, "output": chat_answer})
             st.session_state.memory.append({"role": "user", "content": st.session_state.user_data["chat_input_ulang"]})
-            st.session_state.memory.append({"role": "assistant", "content": eng_2_ulang.translate(chat_answer)})
+            st.session_state.memory.append({"role": "assistant", "content": chat_answer})
             st.session_state.user_input_instance = ""
             st.rerun()
 

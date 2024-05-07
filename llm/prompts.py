@@ -31,7 +31,7 @@ diagnosis_dict = {
     Do not make an answer on your own when you have no idea about baby's symptoms and given comments. In that case, just present you don't know.
     Remember that the baby could be in a healty condition.
     
-    Generate an answer with gentle and careful mood, in a format of official letter from prominent medical institution.
+    Generate an answer in {language} with gentle and careful mood, in a format of official letter from prominent medical institution.
     Make a list for all the medical situations which could be indicated by given symptoms specifically in the answer.
     Give a comment how to deal with their baby for new carer of the baby after making diagnosis in the answer.
 
@@ -152,7 +152,7 @@ diagnosis_dict = {
     "question_diagnosis":
     """Let's start your work!
     
-    Provide an official diagnostic letter containing a list of possible diagnosis and some sweet advices you generate.
+    Provide a long and detailed diagnostic letter containing a list of possible diagnosis and some sweet advices you generate.
         
     <<BABY>>
     ----

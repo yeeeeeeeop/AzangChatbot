@@ -36,7 +36,7 @@ def Setting_language():
         if "user_language" not in st.session_state:
             ui = UI_messages("english")
         else:
-            ui = UI_messages(st.session_state.user_language)
+            ui = UI_messages("english")
         st.session_state.system_messages = ui.system_messages()
         st.session_state.ai_messages = ui.ai_messages()
         st.session_state.user_messages = ui.user_messages()
@@ -48,7 +48,7 @@ def Cache_language_status():
 
 def User_input_below():
     def Submit():
-        ulang_2_eng = Messages_translator(st.session_state.user_language, to_eng=True)
+        ulang_2_eng = Messages_translator("english", to_eng=True)
         st.session_state.user_input_instance = ulang_2_eng.translate(st.session_state.widget)
         if st.session_state.progress == "information":
             st.session_state.user_data["additional_context_ulang"] = st.session_state.widget
@@ -74,11 +74,6 @@ def Clear():
         st.session_state.diagnosis = ""
         st.session_state.form_index = ""
         st.rerun()
-
-@st.cache_data(show_spinner="WAIT...")
-def Load_chat_model(chosen_llm: str, api_token: str):
-    chat_model = Chat_model(chosen_llm, api_token)
-    return chat_model
 
 @st.cache_data(show_spinner="WAIT...")
 def Prepare_for_RAG(main_path, faiss_path):
