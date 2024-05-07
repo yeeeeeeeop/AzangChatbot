@@ -179,6 +179,8 @@ def main():
     # phase 4: progress = chat
     # 진단 기반으로 챗봇 구현
     if st.session_state.progress == "chat":
+        if user_language == "korean":
+            st.warning("한국어 채팅 구현이 완벽하지 않습니다. 영어 사용을 권장합니다.")
         if chat_model and st.session_state.chat_memory:
             chat_model.add_memory(st.session_state.chat_memory)
         elif st.session_state.chat_memory:
