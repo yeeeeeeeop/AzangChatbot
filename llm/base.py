@@ -5,6 +5,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 llm_list = [
             "None",
+            "GPT-3.5-turbo",
             "Mistral (7b/instruct/v0.2)",
             "Zephyr (7b/beta)",
             "Gemma (7b/instruct/v1.1)",
@@ -13,7 +14,7 @@ llm_list = [
 
 class Chat_model():
     llms = {
-        "GPT-3.5-turbo": "gpt",
+        "GPT-3.5-turbo": "gpt-3.5-turbo-0125",
         "Zephyr (7b/beta)": "HuggingFaceH4/zephyr-7b-beta",
         "Gemma (7b/instruct/v1.1)": "google/gemma-1.1-7b-it",
         "(Bad perfomance) Falcon (7b/instruct)": "tiiuae/falcon-7b-instruct",
@@ -22,18 +23,18 @@ class Chat_model():
     }
 
     def __init__(self, llm: str, api_key: str):
-        self.__llm = Chat_model.llms[llm]
+        self.__llm = self.llms[llm]
         self.__api = api_key
         self.__categorize_model()
         self.__set_memory()
     
     def run(self, purpose: str, input: dict, *args, **kwargs):
         self.__validate_purpose(purpose)
-        if self.__llm == "gpt":
-            from langchain.chat_models.openai import ChatOpenAI
+        if self.__llm == "gpt-3.5-turbo-0125":
+            from langchain_openai.chat_models import ChatOpenAI
             model = ChatOpenAI(
                 temperature=0.1,
-                max_tokens=4096,
+                max_tokens=2048,
                 model="gpt-3.5-turbo-0125",
                 )
         else:
@@ -78,7 +79,7 @@ class Chat_model():
 
     def __categorize_model(self):
         if self.__llm in ["HuggingFaceH4/zephyr-7b-beta",
-                          "gpt"]:
+                          "gpt-3.5-turbo-0125"]:
             self.__category = "chat_with_system"
         if self.__llm in ["google/gemma-1.1-7b-it",
                           "mistralai/Mistral-7B-Instruct-v0.2",
@@ -104,12 +105,12 @@ class Chat_model():
             summary_cls = SystemMessage
         if self.__category == "chat_without_system":
             summary_cls = HumanMessage
-        if self.__llm == "gpt":
-            from langchain.chat_models.openai import ChatOpenAI
+        if self.__llm == "gpt-3.5-turbo-0125":
+            from langchain_openai.chat_models import ChatOpenAI
         self.__memory = ConversationSummaryBufferMemory(
             human_prefix= "user",
             ai_prefix= "assistant",
-            llm= self.__set_llm() if self.__llm != "gpt" else ChatOpenAI(temperature=0.1),
+            llm= self.__set_llm() if self.__llm != "gpt-3.5-turbo-0125" else ChatOpenAI(temperature=0.1),
             input_key= "input",
             output_key= "output",
             summary_message_cls= summary_cls,

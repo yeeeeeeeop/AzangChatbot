@@ -1,24 +1,24 @@
-from googletrans import Translator, LANGCODES
-
-language_list = list(LANGCODES.keys())
+class Translator:
+    def translate(*args, **kwargs):
+        pass
 
 class Messages_translator:
-    __lang = "en"
+    __lang = "english"
     __trans = Translator()
 
     def __init__(self, language: str, to_eng: bool | None = False):
-        Messages_translator.__lang = LANGCODES[f"{language}"]
+        Messages_translator.__lang = language
         if to_eng == True:
             self.from_lang = Messages_translator.__lang
-            self.to_lang = "en"
+            self.to_lang = "english"
         else:
-            self.from_lang = "en"
+            self.from_lang = "english"
             self.to_lang = Messages_translator.__lang
 
     def translate(self, *args):
         for_translated_list = list(args)
         list_length = len(for_translated_list)
-        if Messages_translator.__lang == "en":
+        if Messages_translator.__lang == "english":
             if list_length == 1:
                 return for_translated_list[0]
             else:
@@ -34,7 +34,7 @@ class Messages_translator:
         if type(_text) != str:
             raise TypeError("Only str could be translated.")
         trs = Messages_translator.__trans
-        return trs.translate(_text, src=self.from_lang, dest=self.to_lang).text
+        return trs.translate(_text, src=self.from_lang, dest=self.to_lang)
 
     def __translate_list(self, _list: list) -> list:
         instance_list = list()
@@ -88,6 +88,8 @@ class UI_messages(Messages_translator):
         """Reset""",
         "poop_info_request":
         """Tell me some informations about your baby's poop!""",
+        "choose_number_of_data":
+        """How many data do you have?""",
         "form": {
             "day_info" : {
                 "request":
