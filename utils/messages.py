@@ -90,6 +90,8 @@ class UI_messages(Messages_translator):
         """Tell me some informations about your baby's poop!""",
         "choose_number_of_data":
         """How many data do you have?""",
+        "left_form_num":
+        """more information needed.""",
         "form": {
             "day_info" : {
                 "request":
