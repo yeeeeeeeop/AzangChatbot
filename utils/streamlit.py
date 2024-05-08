@@ -101,7 +101,7 @@ class Format_form:
         return res_list
     
     def format_form_choices(self, num):
-            return st.session_state.system_messages["form"][self.label]["contents"][int(num[1])]
+        return st.session_state.system_messages["form"][self.label]["contents"][int(num[1])]
 
     @classmethod
     def format_form_result(cls, args_list: list):
@@ -109,6 +109,11 @@ class Format_form:
         suffix = cls.form_suffix_dict
         text: str = ""
         for item in args_list:
-            label_key = label_keys_list[int(item[0])]
-            text += suffix[label_key].format(contents= cls.form_choices_dict[label_key][int(item[1])])+"\n"
+            if type(item) == list:
+                label_key = label_keys_list[int(item[0][0])]
+                content = ", ".join(cls.form_choices_dict[label_key][int(num[1])] for num in item)
+            if type(item) == str:
+                label_key = label_keys_list[int(item[0])]
+                content = cls.form_choices_dict[label_key][int(item[1])]
+            text += suffix[label_key].format(contents= content)+"\n"
         return text

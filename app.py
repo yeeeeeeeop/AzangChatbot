@@ -78,36 +78,60 @@ def main():
         if st.session_state.user_input_instance:
             st.error(st.session_state.system_messages["send_to_ai"]["error"])
             st.session_state.user_input_instance = ""
-        form_num = st.slider(
-            label=st.session_state.system_messages["choose_number_of_data"],
-            min_value=1,
-            max_value=7,
-            step=1,
-            value=1,
-        )
         form_item_list = list(Format_form.form_choices_dict.keys())
-        for i in range(form_num):
-            if i < len(st.session_state.form_index):
-                st.info(f"""{st.session_state.user_data[f"info_{i}"]}""")
-            else:
-                with st.form(key=f"form_number_{i}"):
-                    for item in form_item_list:
-                        st.radio(
-                            label=st.session_state.system_messages["form"][item]["request"],
-                            options=Format_form(item).format_form_options(),
-                            format_func=Format_form(item).format_form_choices,
-                            key= item + str(i),
-                            horizontal= True
+        if st.session_state.form_index == "":
+            form_num = st.slider(
+                label=st.session_state.system_messages["choose_number_of_data"],
+                min_value=1,
+                max_value=7,
+                step=1,
+                value=1,
+            )
+            num_button = st.button(label="submit!")
+            if num_button:
+                st.session_state.form_index = int(form_num)
+                st.session_state.user_data["info_list"] = []
+                st.rerun()
+        elif st.session_state.form_index != 0:
+            if st.session_state.user_data["info_list"] != []:
+                for item in st.session_state.user_data["info_list"]:
+                    with st.chat_message("user"):
+                        st.write(item)
+            with st.chat_message("assistant"):
+                st.write(f"{st.session_state.form_index} "+st.session_state.system_messages["left_form_num"])
+            with st.form(key=f"form_number_{st.session_state.form_index}"):
+                for item in form_item_list:
+                    if item == "property_info":
+                        continue
+                    st.radio(
+                        label=st.session_state.system_messages["form"][item]["request"],
+                        options=Format_form(item).format_form_options(),
+                        format_func=Format_form(item).format_form_choices,
+                        key= item + str(st.session_state.form_index),
+                        horizontal= True
+                    )
+                st.multiselect(
+                    label=st.session_state.system_messages["form"]["property_info"]["request"],
+                    options=Format_form("property_info").format_form_options(),
+                    default=Format_form("property_info").format_form_options()[0],
+                    format_func=Format_form("property_info").format_form_choices,
+                    key= "property_info" + str(st.session_state.form_index)
+                )
+                basic_information_submitted = st.form_submit_button()
+            if basic_information_submitted:
+                st.session_state.user_data["info_list"].append(
+                    Format_form.format_form_result(
+                        args_list=[st.session_state[item + str(st.session_state.form_index)] for item in form_item_list]
                         )
-                    basic_information_submitted = st.form_submit_button()
-                if basic_information_submitted:
-                    st.session_state.user_data[f"info_{i}"] = Format_form.format_form_result(
-                        args_list=[st.session_state[item + str(i)] for item in form_item_list]
-                        )
-                    st.session_state.form_index += "."
-                    st.rerun()
-        if len(st.session_state.form_index) == form_num:
-            st.session_state.user_data["basic_info"] = "\n\n".join([st.session_state.user_data[f"info_{i}"] for i in range(form_num)])
+                    )
+                st.session_state.user_data["info_list"].sort(
+                    reverse=True, 
+                    key= lambda x: int(x[0])
+                    )
+                st.session_state.form_index -= 1
+                st.rerun()
+        else:
+            st.session_state.user_data["basic_info"] = "\n\n".join(st.session_state.user_data["info_list"])
             st.session_state.memory.append({"role": "assistant", "content": st.session_state.ai_messages["intro"]})
             st.session_state.memory.append({"role": "user", "content": st.session_state.user_data["basic_info"]})
             st.session_state.progress = "information"
