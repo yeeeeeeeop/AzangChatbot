@@ -92,15 +92,9 @@ class UI_messages(Messages_translator):
         """How many data do you have?""",
         "left_form_num":
         """more information needed.""",
+        "time_data":
+        """When did the baby start to defecate as below?""",
         "form": {
-            "day_info" : {
-                "request":
-                """How many days has it been since the baby started to defecate as below?""",
-                "contents":
-                ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
-                "suffix":
-                """{contents} days ago,"""
-                },
             "color_info" : {
                 "request" :
                 """What was the color of your baby's stool?""",

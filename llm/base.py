@@ -34,7 +34,7 @@ class Chat_model():
             from langchain_openai.chat_models import ChatOpenAI
             model = ChatOpenAI(
                 temperature=0.1,
-                max_tokens=2048,
+                max_tokens=1000,
                 api_key= self.__api,
                 model="gpt-3.5-turbo-0125",
                 )
@@ -111,7 +111,7 @@ class Chat_model():
         self.__memory = ConversationSummaryBufferMemory(
             human_prefix= "user",
             ai_prefix= "assistant",
-            llm= self.__set_llm() if self.__llm != "gpt-3.5-turbo-0125" else ChatOpenAI(temperature=0.1, api_key=self.__api),
+            llm= self.__set_llm() if self.__llm != "gpt-3.5-turbo-0125" else ChatOpenAI(temperature=0.1, api_key=self.__api, model="gpt-3.5-turbo-0125"),
             input_key= "input",
             output_key= "output",
             summary_message_cls= summary_cls,

@@ -100,6 +100,9 @@ def main():
             with st.chat_message("assistant"):
                 st.write(f"{st.session_state.form_index} "+st.session_state.system_messages["left_form_num"])
             with st.form(key=f"form_number_{st.session_state.form_index}"):
+                time_data = st.text_input(
+                    label=st.session_state.system_messages["time_data"]
+                )
                 for item in form_item_list:
                     if item == "property_info":
                         continue
@@ -119,15 +122,16 @@ def main():
                 )
                 basic_information_submitted = st.form_submit_button()
             if basic_information_submitted:
-                st.session_state.user_data["info_list"].append(
-                    Format_form.format_form_result(
-                        args_list=[st.session_state[item + str(st.session_state.form_index)] for item in form_item_list]
-                        )
+                info_str = Format_form.format_form_result(
+                    args_list=[st.session_state[item + str(st.session_state.form_index)] for item in form_item_list]
                     )
-                st.session_state.user_data["info_list"].sort(
-                    reverse=True, 
-                    key= lambda x: int(x[0])
-                    )
+                each_info = f"""<TIME DATA>
+                {time_data}
+                <DESCRIPTION>
+                {info_str}
+                -
+                """
+                st.session_state.user_data["info_list"].append(each_info)
                 st.session_state.form_index -= 1
                 st.rerun()
         else:
