@@ -13,7 +13,7 @@ def Setting_session_state():
     if "progress" not in st.session_state:
         st.session_state.progress = "start"
     if "diagnosis" not in st.session_state:
-        st.session_state.diagnosis = ""
+        st.session_state.diagnosis = {}
     if "user_input_instance" not in st.session_state:
         st.session_state.user_input_instance = ""
     if "form_index" not in st.session_state:
@@ -50,7 +50,7 @@ def User_input_below():
     def Submit():
         ulang_2_eng = Messages_translator("english", to_eng=True)
         st.session_state.user_input_instance = ulang_2_eng.translate(st.session_state.widget)
-        if st.session_state.progress == "information":
+        if st.session_state.progress == "add_info":
             st.session_state.user_data["additional_context_ulang"] = st.session_state.widget
         if st.session_state.progress == "chat":
             st.session_state.user_data["chat_input_ulang"] = st.session_state.widget
@@ -71,7 +71,7 @@ def Clear():
         st.session_state.user_input_instance = ""
         st.session_state.memory = []
         st.session_state.chat_memory = []
-        st.session_state.diagnosis = ""
+        st.session_state.diagnosis = {}
         st.session_state.form_index = ""
         st.rerun()
 
