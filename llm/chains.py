@@ -1,11 +1,11 @@
 import re
 from operator import itemgetter
 from langchain.schema.runnable import RunnableLambda
-from utils.util import Add_diagnostic_contexts, Add_chat_context
+from utils.util import Add_diagnostic_contexts, Add_chat_context, Add_feature_context
 
 def Activate_diagnosis_chain(chat_model, main_prompt, evaluate_each_prompt, diagnose_each_prompt, _dict:dict):
     """
-    _dict should be {"user_data": something, "how_many_search": int, "faiss_path": faiss_path}
+    _dict should be {"symptoms": something, "how_many_search": int, "faiss_path": faiss_path}
     """
     def add_score(_dict:dict) -> dict:
         evaluate_each_chain = evaluate_each_prompt | chat_model
@@ -37,7 +37,6 @@ def Activate_diagnosis_chain(chat_model, main_prompt, evaluate_each_prompt, diag
     diagnosis_chain = {
         "symptoms": itemgetter("symptoms"),
         "comments": RunnableLambda(Add_diagnostic_contexts) | RunnableLambda(map_diagnosis),
-        "language": itemgetter("language")
         } | main_prompt | chat_model
     
     res = diagnosis_chain.invoke(_dict).content
@@ -45,6 +44,16 @@ def Activate_diagnosis_chain(chat_model, main_prompt, evaluate_each_prompt, diag
 
 
 def Activate_chat_chain(chat_model, main_prompt, _dict):
-    chat_chain =  RunnableLambda(Add_chat_context) | main_prompt | chat_model
+    chat_chain = RunnableLambda(Add_chat_context) | main_prompt | chat_model
     res = chat_chain.invoke(_dict).content
+    return res
+
+def Activate_feature_chain(chat_model, main_prompt, _dict):
+    feature_chain = RunnableLambda(Add_feature_context) | main_prompt | chat_model
+    res = feature_chain.invoke(_dict).content
+    return res
+
+def Activate_translate_chain(chat_model, main_prompt, _dict):
+    feature_chain = main_prompt | chat_model
+    res = feature_chain.invoke(_dict).content
     return res

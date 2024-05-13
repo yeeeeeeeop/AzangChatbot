@@ -61,6 +61,24 @@ class Chat_model():
                 _dict= input
             )
 
+        if self.__purpose == "feature_extract":
+            from llm.chains import Activate_feature_chain
+            main_prompt = self.__set_prompt_feature()
+            answer = Activate_feature_chain(
+                chat_model= model,
+                main_prompt= main_prompt,
+                _dict= input
+            )
+
+        if self.__purpose == "translate":
+            from llm.chains import Activate_translate_chain
+            main_prompt = self.__set_prompt_translate()
+            answer = Activate_translate_chain(
+                chat_model= model,
+                main_prompt= main_prompt,
+                _dict= input
+            )
+
         return answer
 
     def add_memory(self, chat_memory: list):
@@ -75,8 +93,12 @@ class Chat_model():
             self.__purpose = purpose
         elif purpose == "chat":
             self.__purpose = purpose
+        elif purpose == "feature_extract":
+            self.__purpose = purpose
+        elif purpose == "translate":
+            self.__purpose = purpose
         else:
-            raise KeyError("Only two purposes are permitted: diagnosis or chat")
+            raise KeyError("diagnosis or chat or feature_extract or translate")
 
     def __categorize_model(self):
         if self.__llm in ["HuggingFaceH4/zephyr-7b-beta",
@@ -118,6 +140,46 @@ class Chat_model():
             return_messages= True,
             max_token_limit= 2000,
         )
+
+    def __set_prompt_translate(self):
+        from llm.prompts import translate_dict, formatter_dict
+        formatter = None
+        if self.__category == "chat_with_system":
+            from llm.prompts import chat_prompt_system as pt
+        if self.__category == "chat_without_system":
+            from llm.prompts import chat_prompt_no_system as pt
+        if self.__category == "unable_chat":
+            from llm.prompts import template_prompt as pt
+            formatter = formatter_dict[self.__llm],
+        main_prompt = pt(
+            role=translate_dict["role"],
+            question=translate_dict["question"],
+            example= None,
+            ex_answer= None,
+            formatter= formatter,
+            chat_logs= None
+        )
+        return main_prompt
+
+    def __set_prompt_feature(self):
+        from llm.prompts import feature_extr_dict, formatter_dict
+        formatter = None
+        if self.__category == "chat_with_system":
+            from llm.prompts import chat_prompt_system as pt
+        if self.__category == "chat_without_system":
+            from llm.prompts import chat_prompt_no_system as pt
+        if self.__category == "unable_chat":
+            from llm.prompts import template_prompt as pt
+            formatter = formatter_dict[self.__llm],
+        main_prompt = pt(
+            role=feature_extr_dict["role"],
+            question=feature_extr_dict["question"],
+            example= None,
+            ex_answer= None,
+            formatter= formatter,
+            chat_logs= None
+        )
+        return main_prompt
 
     def __set_prompt_chat(self):
         from llm.prompts import chat_dict, formatter_dict
