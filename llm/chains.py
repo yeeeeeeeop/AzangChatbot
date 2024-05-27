@@ -15,15 +15,9 @@ def Add_feature_context(_dict: dict):
     return _dict
 def Add_diagnostic_contexts(_dict: dict) -> dict:
     vectordb_RAG = FAISS.load_local(folder_path=_dict["faiss_path"], embeddings=embedding_openai, allow_dangerous_deserialization=True)
-    context_list = vectordb_RAG.similarity_search(query=_dict["formatted_sx"], k=_dict["how_many_search"])
-    if "article_name" in context_list[0].metadata:
-        context_list_modified = [item.page_content.lower()+" ("+item.metadata["article_name"]+","+item.metadata["journal"]+")" for item in context_list]
-    else:
-        context_list_modified = [item.page_content for item in context_list]
-    _dict["context_list"] = context_list_modified
-    del _dict["how_many_search"]
+    context_list = vectordb_RAG.similarity_search(query=_dict["formatted_sx"], k=21)
+    _dict["context_list"] = [item.page_content for item in context_list]
     del _dict["faiss_path"]
-    del _dict["formatted_sx"]
     return _dict
 def Add_chat_context(_dict: dict):
     vectordb_RAG = FAISS.load_local(folder_path=_dict["faiss_path"], embeddings=embedding_openai, allow_dangerous_deserialization=True)
@@ -47,37 +41,49 @@ def Activate_diagnosis_chain(
         _dict:dict):
     
     def format_symptoms(_dict: dict) -> dict:
-        input_dict = dict()
-        input_dict["query"] = _dict["symptoms"]
-        input_dict["faiss_path"] = _dict["faiss_path"]
         symptom_chain = RunnableLambda(Add_feature_context) | feature_prompt | chat_model
-        _dict["formatted_sx"] = symptom_chain.invoke(input_dict).content
+        _dict["formatted_sx"] = symptom_chain.invoke({
+            "query": _dict["symptoms"],
+            "faiss_path": _dict["faiss_path"]
+            }).content
         return _dict
-    def add_score(_dict:dict) -> dict:
-        evaluate_each_chain = evaluate_each_prompt | chat_model
-        res = evaluate_each_chain.invoke(_dict)
-        try:
-            score = re.match(r"^\d([.]\d+)?", res.content).group(0)
-        except:
-            score = "0"
-        _dict["score"] = score
-        return _dict
-    def make_comment(_dict: dict):
-        if float(_dict["score"]) < 0.3:
-            comment = "The patient is likely to be healthy. The symptoms are not clinically important when regarding the context."
-        else:
+    def map_diagnosis(_dict: dict) -> str:
+        def add_score(_dict:dict) -> dict:
+            evaluate_each_chain = evaluate_each_prompt | chat_model
+            res = evaluate_each_chain.invoke(_dict)
+            try:
+                score = re.match(r"^\d([.]\d+)?", res.content).group(0)
+            except:
+                score = "0"
+            if float(score) > 0.3:
+                res= _dict["context"]+" <SCORE> "+score+"\n"
+            else:
+                res= "useless"
+            return res
+        def make_comment(_dict: dict):
             comment_chain = diagnose_each_prompt | chat_model
             comment = comment_chain.invoke(_dict).content
-        return comment
-    def map_diagnosis(_dict: dict) -> str:
+            return comment
         text = ""
+        cnt = 0
+        above_thr_list = []
         for item in _dict["context_list"]:
-            diagnosis_map_chain = RunnableLambda(add_score) | RunnableLambda(make_comment)
-            res = diagnosis_map_chain.invoke({
-                "symptoms": _dict["symptoms"],
+            modified_context = add_score({
+                "symptoms": _dict["formatted_sx"],
                 "context": item
             })
-            text += res+"\n===\n"
+            if modified_context == "useless":
+                cnt += 1
+            else:
+                above_thr_list.append(modified_context)
+        text += f"{cnt} of 21 professionals said that the baby could be in a healthy condition. Other professionals said as below."
+        for i in range(0, len(above_thr_list), 3):
+            joined_context = "\n".join(above_thr_list[i:i+3])
+            comment = make_comment({
+                "symptoms": _dict["formatted_sx"], 
+                "context": joined_context
+                })
+            text += "\n==\n"+comment
         return text
     
     output_dict = dict()
