@@ -1,3 +1,5 @@
+# 지금은 의미 없는 기능.
+
 class Translator:
     def translate(*args, **kwargs):
         pass

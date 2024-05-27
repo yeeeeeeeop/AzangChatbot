@@ -1,7 +1,6 @@
 import os
 import streamlit as st
-from llm.base import llm_list, Chat_model
-from utils.streamlit import *
+from utils.util import Setting_language, Setting_session_state, User_input_below, Clear, Format_form, chat_model
 
 def Setting():
     st.set_page_config(
@@ -12,57 +11,6 @@ def Setting():
     global main_path, faiss_path
     main_path = os.getcwd()
     faiss_path = os.path.join(main_path, "faiss")
-    if not os.path.isdir(faiss_path):
-        os.mkdir(faiss_path)
-        os.mkdir(os.path.join(faiss_path, "abs_with_textbook"))
-        os.mkdir(os.path.join(faiss_path, "textbook"))
-    
-def Sidebar():
-    global chat_model, user_language
-    with st.sidebar:
-        # 언어 설정
-        user_language = st.selectbox(
-            label= "LANGUAGE",
-            options= ["english", "korean"],
-            index= 0,
-            key="user_language",
-            on_change=Cache_language_status
-        )
-
-        # ai 모델 설정
-        chosen_llm = st.selectbox(
-            label=st.session_state.system_messages["choice"],
-            options=llm_list,
-        )
-        api_token = st.text_input(label=st.session_state.system_messages["write"], placeholder="HuggingfaceHub or OpenAI", type="password")
-        chat_model = None
-        load_model = st.button(
-            label=st.session_state.system_messages["model"]["request"],
-            use_container_width=True,
-            )
-        if chosen_llm == "None" or not api_token:
-            st.session_state.model_prepare = False
-        if load_model and chosen_llm != "None" and api_token:
-            st.session_state.model_prepare = True
-        if st.session_state.model_prepare == True and chosen_llm != "None" and api_token:
-            chat_model = Chat_model(chosen_llm, api_token)
-            if chat_model:
-                st.write("LLM "+st.session_state.system_messages["complete"])
-        
-        # RAG를 위한 데이터베이스 생성.
-        # 1회 설정 후에는 재설정하지 않아도 괜찮도록 구현
-        if st.session_state.RAG_prepare == False:
-            rag_prepare = st.button(
-                label=st.session_state.system_messages["RAG"]["request"],
-                use_container_width= True
-            )
-            if rag_prepare:
-                if not os.path.isfile(os.path.join(faiss_path, "abs_with_textbook", "index.faiss")) or not os.path.isfile(os.path.join(faiss_path, "textbook", "index.faiss")):
-                    Prepare_for_RAG(main_path, faiss_path)
-                st.session_state.RAG_prepare = True
-                st.rerun()
-        if st.session_state.RAG_prepare == True:
-            st.write("RAG "+st.session_state.system_messages["complete"])
 
 def main():
     st.title(st.session_state.system_messages["title"])
@@ -164,14 +112,7 @@ def main():
                 )
             if user_confirmed:
                 st.session_state.user_data["symptoms"] = st.session_state.user_data["basic_info"]+"\n"+st.session_state.user_data["additional_context"]
-                st.session_state.user_data["formatted_sx"] = chat_model.run(
-                    purpose="feature_extract",
-                    input={
-                        "query": st.session_state.user_data["symptoms"],
-                        "faiss_path": os.path.join(faiss_path, "textbook")
-                    }
-                )
-                st.session_state.memory.append({"role": "user", "content": st.session_state.user_data["formatted_sx"]})    
+                st.session_state.memory.append({"role": "user", "content": st.session_state.user_data["additional_context_ulang"]})    
                 st.session_state.progress = "chain"
                 st.rerun()
         
@@ -182,65 +123,33 @@ def main():
             st.session_state.user_input_instance = ""
         with st.chat_message("assistant"):
             st.write(st.session_state.ai_messages["chain"])
-        how_many_search = st.slider(
-            label=st.session_state.system_messages["chain"]["num"],
-            min_value=10,
-            max_value=70,
-            value=15,
-            step= 1,
-        )
         start_diagnosis = st.button(
             label=st.session_state.system_messages["chain"]["start"],
             use_container_width= True
         )
         if start_diagnosis:
-            if st.session_state.RAG_prepare == True and chat_model:
-                diagnosis_input_dict= {
-                    "symptoms" : st.session_state.user_data["symptoms"],
-                    "formatted_sx": st.session_state.user_data["formatted_sx"],
-                    "how_many_search" : how_many_search,
-                    "faiss_path": os.path.join(faiss_path, "abs_with_textbook"),
-                }
-                with st.status(label="Making diagnosis"):
-                    st.session_state.diagnosis["english"] = chat_model.run(
-                        purpose= "diagnosis",
-                        input= diagnosis_input_dict
-                        )
-                    st.rerun()
-            elif st.session_state.RAG_prepare == False:
-                st.error(st.session_state.system_messages["RAG"]["error"])
-            else:
-                st.error(st.session_state.system_messages["model"]["error"])
-                st.session_state.model_prepare = False
-        if user_language != "english" and "english" in st.session_state.diagnosis:
-            st.session_state.diagnosis["user_language"] = chat_model.run(
-                purpose= "translate",
-                input= {
-                    "input": st.session_state.diagnosis["english"],
-                    "language": user_language
-                }
-            )
+            diagnosis_input_dict= {
+                "symptoms" : st.session_state.user_data["symptoms"],
+                "how_many_search" : 15,
+                "faiss_path": os.path.join(faiss_path, "abs_with_textbook"),
+            }
+            with st.status(label="Making diagnosis"):
+                st.session_state.diagnosis = chat_model.run(
+                    purpose= "diagnosis",
+                    input= diagnosis_input_dict
+                    )
             st.session_state.memory.append({"role": "assistant", "content": st.session_state.diagnosis["user_language"]})
-            st.session_state.progress = "chat"
-            st.rerun()
-        elif "english" in st.session_state.diagnosis:
-            st.session_state.memory.append({"role": "assistant", "content": st.session_state.diagnosis["english"]})
             st.session_state.progress = "chat"
             st.rerun()
 
     # phase 4: progress = chat
     # 진단 기반으로 챗봇 구현
     if st.session_state.progress == "chat":
-        if user_language == "korean":
-            st.warning("한국어 채팅 구현이 완벽하지 않습니다. 영어 사용을 권장합니다.")
-        if chat_model and st.session_state.chat_memory:
+        if st.session_state.chat_memory:
             chat_model.add_memory(st.session_state.chat_memory)
-        elif st.session_state.chat_memory:
-            st.error(st.session_state.system_messages["model"]["error"])
-            st.session_state.model_prepare = False
         if st.session_state.user_input_instance:
             chat_input = {
-                "symptoms":st.session_state.user_data["formatted_sx"],
+                "symptoms":st.session_state.user_data["symptoms"],
                 "query": st.session_state.user_input_instance,
                 "diagnosis": st.session_state.diagnosis["english"],
                 "faiss_path": os.path.join(faiss_path, "abs_with_textbook")}
@@ -248,9 +157,9 @@ def main():
                 purpose="chat",
                 input= chat_input
             )
-            st.session_state.chat_memory.append({"input": st.session_state.user_input_instance, "output": chat_answer})
+            st.session_state.chat_memory.append({"input": st.session_state.user_input_instance, "output": chat_answer["english"]})
             st.session_state.memory.append({"role": "user", "content": st.session_state.user_data["chat_input_ulang"]})
-            st.session_state.memory.append({"role": "assistant", "content": chat_answer})
+            st.session_state.memory.append({"role": "assistant", "content": chat_answer["user_language"]})
             st.session_state.user_input_instance = ""
             st.rerun()
 
@@ -261,5 +170,4 @@ def main():
 
 if __name__ == "__main__":
     Setting()
-    Sidebar()
     main()
