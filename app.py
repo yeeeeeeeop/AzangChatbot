@@ -30,8 +30,8 @@ def main():
             )
             lock_pass = st.form_submit_button()
         if lock_pass:
-            if password == st.secrets["name"]:
-                st.session_state.progess = "form"
+            if password == st.secrets["TEAM"]:
+                st.session_state.progress = "form"
                 st.rerun()
 
     if st.session_state.progress == "form":
