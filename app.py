@@ -23,13 +23,16 @@ def main():
     # phase 1: progress = start
     # 유저한테서 기본적인 정보 받아옴
     if st.session_state.progress == "start":
-        password = st.text_input(
-            label="해당 프로젝트 대표 이름을 적으시오",
-            type= "password"
-        )
-        if password == st.secrets["name"]:
-            st.session_state.progess = "form"
-            st.rerun()
+        with st.form(key="lock"):
+            password = st.text_input(
+                label="해당 프로젝트 팀 이름을 영어로 적으시오",
+                type= "password"
+            )
+            lock_pass = st.form_submit_button()
+        if lock_pass:
+            if password == st.secrets["name"]:
+                st.session_state.progess = "form"
+                st.rerun()
 
     if st.session_state.progress == "form":
         with st.chat_message("assistant"):
