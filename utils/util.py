@@ -3,10 +3,12 @@ from langchain_openai.embeddings import OpenAIEmbeddings
 from llm.base import Chat_model
 from utils.messages import UI_messages, Messages_translator
 
-chat_model = Chat_model(st.secrets["OPENAI_API_KEY"])
+chat_model = Chat_model(
+    api_key=st.secrets["OPENAI_API_KEY"]
+    )
 embedding_openai = OpenAIEmbeddings(
     api_key=st.secrets["OPENAI_API_KEY"]
-)
+    )
 
 def Setting_session_state():
     if "progress" not in st.session_state:
