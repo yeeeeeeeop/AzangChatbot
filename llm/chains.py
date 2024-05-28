@@ -2,7 +2,10 @@ import re
 from operator import itemgetter
 from langchain.vectorstores.faiss import FAISS
 from langchain.schema.runnable import RunnableLambda
-from utils.util import embedding_openai
+from langchain_openai.embeddings import OpenAIEmbeddings
+from utils.util import openai_api
+
+embedding_openai = OpenAIEmbeddings(api_key = openai_api)
 
 def Add_feature_context(_dict: dict):
     vectordb_RAG = FAISS.load_local(folder_path=_dict["faiss_path"], embeddings=embedding_openai, allow_dangerous_deserialization=True)

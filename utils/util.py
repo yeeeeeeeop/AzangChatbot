@@ -1,14 +1,7 @@
 import streamlit as st
-from langchain_openai.embeddings import OpenAIEmbeddings
-from llm.base import Chat_model
-from utils.messages import UI_messages, Messages_translator
+from utils.messages import UI_messages
 
-chat_model = Chat_model(
-    api_key=st.secrets["OPENAI_API_KEY"]
-    )
-embedding_openai = OpenAIEmbeddings(
-    api_key=st.secrets["OPENAI_API_KEY"]
-    )
+openai_api = st.secrets["OPENAI_API_KEY"]
 
 def Setting_session_state():
     if "progress" not in st.session_state:
@@ -41,21 +34,6 @@ def Setting_language():
         st.session_state.user_messages = UI_messages.user_messages()
         st.session_state.lang_changed == False
 
-def User_input_below():
-    def Submit():
-        ulang_2_eng = Messages_translator("korean", to_eng=True)
-        st.session_state.user_input_instance = ulang_2_eng.translate(st.session_state.widget)
-        if st.session_state.progress == "add_info":
-            st.session_state.user_data["additional_context_ulang"] = st.session_state.widget
-        if st.session_state.progress == "chat":
-            st.session_state.user_data["chat_input_ulang"] = st.session_state.widget
-        st.session_state.widget = ""
-    below_input_bar = st.text_input(
-        label=st.session_state.system_messages["send_to_ai"]["request"],
-        key="widget",
-        on_change=Submit
-        )
-
 def Clear():
     col1, col2, col3 = st.columns(3)
     with col3:
@@ -72,7 +50,6 @@ def Clear():
 
 class Format_form:
     form_choices_dict, form_suffix_dict = UI_messages.format_messages_for_form()
-
     def __init__(self, label:str):
         if self.validate_label(label):
             self.label = label

@@ -1,6 +1,7 @@
 import os
 import streamlit as st
-from utils.util import Setting_language, Setting_session_state, User_input_below, Clear, Format_form, chat_model
+from utils.util import Setting_session_state, Setting_language, Clear, Format_form
+from llm.base import Chat_model, Messages_translator
 
 def Setting():
     st.set_page_config(
@@ -140,16 +141,14 @@ def main():
             use_container_width= True
         )
         if start_diagnosis:
+            diagnosis = Chat_model(purpose="diagnosis")
             diagnosis_input_dict= {
                 "symptoms" : st.session_state.user_data["symptoms"],
                 "how_many_search" : 15,
                 "faiss_path": os.path.join(faiss_path, "abs_with_textbook"),
             }
             with st.status(label="Making diagnosis"):
-                st.session_state.diagnosis = chat_model.run(
-                    purpose= "diagnosis",
-                    input= diagnosis_input_dict
-                    )
+                st.session_state.diagnosis = diagnosis.run(input= diagnosis_input_dict)
             st.session_state.memory.append({"role": "assistant", "content": st.session_state.diagnosis["user_language"]})
             st.session_state.progress = "chat"
             st.rerun()
@@ -157,29 +156,41 @@ def main():
     # phase 4: progress = chat
     # 진단 기반으로 챗봇 구현
     if st.session_state.progress == "chat":
+        chat = Chat_model(purpose="chat")
         if st.session_state.chat_memory:
-            chat_model.add_memory(st.session_state.chat_memory)
+            chat.add_memory(st.session_state.chat_memory)
         if st.session_state.user_input_instance:
             chat_input = {
                 "symptoms":st.session_state.user_data["symptoms"],
                 "query": st.session_state.user_input_instance,
                 "diagnosis": st.session_state.diagnosis["english"],
                 "faiss_path": os.path.join(faiss_path, "abs_with_textbook")}
-            chat_answer = chat_model.run(
-                purpose="chat",
-                input= chat_input
-            )
+            chat_answer = chat.run(input= chat_input)
             st.session_state.chat_memory.append({"input": st.session_state.user_input_instance, "output": chat_answer["english"]})
             st.session_state.memory.append({"role": "user", "content": st.session_state.user_data["chat_input_ulang"]})
             st.session_state.memory.append({"role": "assistant", "content": chat_answer["user_language"]})
             st.session_state.user_input_instance = ""
             st.rerun()
 
-    # 하단 입력 공간과 대화 초기화 버튼
-    User_input_below()
-    Clear()
+# 하단 입력 공간과 대화 초기화 버튼
+def User_input_below():
+    def Submit():
+        ulang_2_eng = Messages_translator("korean", to_eng=True)
+        st.session_state.user_input_instance = ulang_2_eng.translate(st.session_state.widget)
+        if st.session_state.progress == "add_info":
+            st.session_state.user_data["additional_context_ulang"] = st.session_state.widget
+        if st.session_state.progress == "chat":
+            st.session_state.user_data["chat_input_ulang"] = st.session_state.widget
+        st.session_state.widget = ""
+    below_input_bar = st.text_input(
+        label=st.session_state.system_messages["send_to_ai"]["request"],
+        key="widget",
+        on_change=Submit
+        )
 
 
 if __name__ == "__main__":
     Setting()
     main()
+    User_input_below()
+    Clear()

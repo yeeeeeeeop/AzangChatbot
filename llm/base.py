@@ -1,18 +1,18 @@
 from langchain_openai.chat_models import ChatOpenAI
 from langchain.memory import ConversationSummaryBufferMemory
+from utils.util import openai_api
 
-class Chat_model():
-
-    def __init__(self, api_key):
-        self.__api = api_key
-        self.__set_memory()
-    
-    def run(self, purpose: str, input: dict):
+class Chat_model:
+    def __init__(self, purpose: str):
         self.__validate_purpose(purpose)
+        if self.__purpose == "chat":
+            self.__set_memory()
+    
+    def run(self, input: dict):
         model = ChatOpenAI(
             temperature=0.1,
             max_tokens=1000,
-            api_key= self.__api,
+            api_key= openai_api,
             model="gpt-3.5-turbo-0125",
             )
 
@@ -67,7 +67,7 @@ class Chat_model():
         self.__memory = ConversationSummaryBufferMemory(
             human_prefix= "user",
             ai_prefix= "assistant",
-            llm= ChatOpenAI(temperature=0.1, api_key=self.__api, model="gpt-3.5-turbo-0125"),
+            llm= ChatOpenAI(temperature=0.1, api_key=openai_api, model="gpt-3.5-turbo-0125"),
             input_key= "input",
             output_key= "output",
             return_messages= True,
@@ -122,3 +122,68 @@ class Chat_model():
             question=translate_dict["question_to_eng"],
             )
         return main_prompt
+    
+class Messages_translator:
+    __lang = "english"
+    __trans = Chat_model(purpose= "to_eng")
+
+    def __init__(self, language: str, to_eng: bool | None = False):
+        self.__lang = language
+        if to_eng == True:
+            self.from_lang = self.__lang
+            self.to_lang = "english"
+        else:
+            self.from_lang = "english"
+            self.to_lang = self.__lang
+
+    def translate(self, *args):
+        for_translated_list = list(args)
+        list_length = len(for_translated_list)
+        if self.__lang == "english":
+            if list_length == 1:
+                return for_translated_list[0]
+            else:
+                return for_translated_list
+        else:
+            translated_list = self.__translate_list(for_translated_list)
+            if list_length == 1:
+                return translated_list[0]
+            else:
+                return translated_list
+
+    def __translate_text(self, _text: str):
+        if type(_text) != str:
+            raise TypeError("Only str could be translated.")
+        trs = self.__trans
+        res = trs.run(input={"input": _text})
+        return res
+
+    def __translate_list(self, _list: list) -> list:
+        instance_list = list()
+        for item in _list:
+            if type(item) == str:
+                item_trs = self.__translate_text(item)
+            elif type(item) == list:
+                item_trs = self.__translate_list(item)
+            elif type(item) == dict:
+                item_trs = self.__translate_dict(item)
+            else:
+                raise TypeError("How could...? You've got an error in list translation")
+            instance_list.append(item_trs)
+        return instance_list
+
+    def __translate_dict(self, _dict: dict) -> dict:
+        instance_dict = dict()
+        dict_keys_list = list(_dict.keys())
+        dict_values_list = list(_dict.values())
+        for index, value in enumerate(dict_values_list):
+            if type(value) == str:
+                value_trs = self.__translate_text(value)
+            elif type(value) == dict:
+                value_trs = self.__translate_dict(value)
+            elif type(value) == list:
+                value_trs = self.__translate_list(value)
+            else:
+                raise TypeError("How could...? You've got an error in dict translation")
+            instance_dict[f"{dict_keys_list[index]}"] = value_trs
+        return instance_dict
