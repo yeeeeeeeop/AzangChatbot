@@ -1,32 +1,37 @@
-# 지금은 의미 없는 기능.
-
 class Translator:
-    def translate(*args, **kwargs):
-        pass
+    def translate(self, text):
+        from utils.util import chat_model
+        res = chat_model.run(
+            purpose="to_eng",
+            input={
+                "input": text
+                }
+            )
+        return res
 
 class Messages_translator:
     __lang = "english"
     __trans = Translator()
 
     def __init__(self, language: str, to_eng: bool | None = False):
-        Messages_translator.__lang = language
+        self.__lang = language
         if to_eng == True:
-            self.from_lang = Messages_translator.__lang
+            self.from_lang = self.__lang
             self.to_lang = "english"
         else:
             self.from_lang = "english"
-            self.to_lang = Messages_translator.__lang
+            self.to_lang = self.__lang
 
     def translate(self, *args):
         for_translated_list = list(args)
         list_length = len(for_translated_list)
-        if Messages_translator.__lang == "english":
+        if self.__lang == "english":
             if list_length == 1:
                 return for_translated_list[0]
             else:
                 return for_translated_list
         else:
-            translated_list = Messages_translator.__translate_list(self, for_translated_list)
+            translated_list = self.__translate_list(for_translated_list)
             if list_length == 1:
                 return translated_list[0]
             else:
@@ -35,18 +40,18 @@ class Messages_translator:
     def __translate_text(self, _text: str):
         if type(_text) != str:
             raise TypeError("Only str could be translated.")
-        trs = Messages_translator.__trans
-        return trs.translate(_text, src=self.from_lang, dest=self.to_lang)
+        trs = self.__trans
+        return trs.translate(_text)
 
     def __translate_list(self, _list: list) -> list:
         instance_list = list()
         for item in _list:
             if type(item) == str:
-                item_trs = Messages_translator.__translate_text(self, item)
+                item_trs = self.__translate_text(item)
             elif type(item) == list:
-                item_trs = Messages_translator.__translate_list(self, item)
+                item_trs = self.__translate_list(item)
             elif type(item) == dict:
-                item_trs = Messages_translator.__translate_dict(self, item)
+                item_trs = self.__translate_dict(item)
             else:
                 raise TypeError("How could...? You've got an error in list translation")
             instance_list.append(item_trs)
@@ -58,11 +63,11 @@ class Messages_translator:
         dict_values_list = list(_dict.values())
         for index, value in enumerate(dict_values_list):
             if type(value) == str:
-                value_trs = Messages_translator.__translate_text(self, value)
+                value_trs = self.__translate_text(value)
             elif type(value) == dict:
-                value_trs = Messages_translator.__translate_dict(self, value)
+                value_trs = self.__translate_dict(value)
             elif type(value) == list:
-                value_trs = Messages_translator.__translate_list(self, value)
+                value_trs = self.__translate_list(value)
             else:
                 raise TypeError("How could...? You've got an error in dict translation")
             instance_dict[f"{dict_keys_list[index]}"] = value_trs
@@ -180,14 +185,17 @@ class UI_messages(Messages_translator):
         """I am satisfied with my explanation."""
     }
 
-    def system_messages(self):
-        messages: dict = super().translate(UI_messages.__system_messages_dict)
+    @classmethod
+    def system_messages(cls):
+        messages = cls.__system_messages_dict
         return messages
-    def ai_messages(self):
-        messages: dict = super().translate(UI_messages.__ai_messages_dict)
+    @classmethod
+    def ai_messages(cls):
+        messages = cls.__ai_messages_dict
         return messages 
-    def user_messages(self):
-        messages: dict = super().translate(UI_messages.__user_messages_dict)
+    @classmethod
+    def user_messages(cls):
+        messages = cls.__user_messages_dict
         return messages
 
     @classmethod

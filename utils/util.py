@@ -13,6 +13,8 @@ embedding_openai = OpenAIEmbeddings(
 def Setting_session_state():
     if "progress" not in st.session_state:
         st.session_state.progress = "start"
+    if "lang_changed" not in st.session_state:
+        st.session_state.lang_changed = True
     if "diagnosis" not in st.session_state:
         st.session_state.diagnosis = {}
     if "user_input_instance" not in st.session_state:
@@ -33,14 +35,15 @@ def Setting_session_state():
         st.session_state.chat_memory = [] #[{"role": "ai/user", "content": "something"}]
 
 def Setting_language():
-    ui = UI_messages("english")
-    st.session_state.system_messages = ui.system_messages()
-    st.session_state.ai_messages = ui.ai_messages()
-    st.session_state.user_messages = ui.user_messages()
+    if st.session_state.lang_changed == True:
+        st.session_state.system_messages = UI_messages.system_messages()
+        st.session_state.ai_messages = UI_messages.ai_messages()
+        st.session_state.user_messages = UI_messages.user_messages()
+        st.session_state.lang_changed == False
 
 def User_input_below():
     def Submit():
-        ulang_2_eng = Messages_translator("english", to_eng=True)
+        ulang_2_eng = Messages_translator("korean", to_eng=True)
         st.session_state.user_input_instance = ulang_2_eng.translate(st.session_state.widget)
         if st.session_state.progress == "add_info":
             st.session_state.user_data["additional_context_ulang"] = st.session_state.widget

@@ -48,7 +48,10 @@ def Activate_diagnosis_chain(
             }).content
         return _dict
     def map_diagnosis(_dict: dict) -> str:
-        def add_score(_dict:dict) -> dict:
+        text = ""
+        cnt = 0
+        above_thr_list = []
+        def add_score(_dict:dict, cnt) -> dict:
             evaluate_each_chain = evaluate_each_prompt | chat_model
             res = evaluate_each_chain.invoke(_dict)
             try:
@@ -56,26 +59,19 @@ def Activate_diagnosis_chain(
             except:
                 score = "0"
             if float(score) > 0.3:
-                res= _dict["context"]+" <SCORE> "+score+"\n"
+                above_thr_list.append(_dict["context"]+" <SCORE> "+score+"\n")
             else:
-                res= "useless"
-            return res
+                cnt += 1
+            return cnt
         def make_comment(_dict: dict):
             comment_chain = diagnose_each_prompt | chat_model
             comment = comment_chain.invoke(_dict).content
             return comment
-        text = ""
-        cnt = 0
-        above_thr_list = []
         for item in _dict["context_list"]:
-            modified_context = add_score({
+            cnt = add_score({
                 "symptoms": _dict["formatted_sx"],
                 "context": item
-            })
-            if modified_context == "useless":
-                cnt += 1
-            else:
-                above_thr_list.append(modified_context)
+            }, cnt)
         text += f"{cnt} of 21 professionals said that the baby could be in a healthy condition. Other professionals said as below."
         for i in range(0, len(above_thr_list), 3):
             joined_context = "\n".join(above_thr_list[i:i+3])
@@ -107,3 +103,7 @@ def Activate_chat_chain(
     korean_chain = translate_prompt | chat_model
     output_dict["user_language"] = korean_chain.invoke({"input": output_dict["english"]}).content
     return output_dict
+
+def Activate_translate_chain(chat_model, main_prompt, _dict):
+    translate_chain = main_prompt | chat_model
+    return translate_chain.invoke(_dict).content

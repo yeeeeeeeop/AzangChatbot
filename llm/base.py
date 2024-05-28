@@ -39,6 +39,15 @@ class Chat_model():
                 _dict= input
                 )
 
+        if self.__purpose == "to_eng":
+            from llm.chains import Activate_translate_chain
+            main_prompt = self.__set_prompt_to_eng()
+            answer = Activate_translate_chain(
+                chat_model= model,
+                main_prompt= main_prompt,
+                _dict= input
+                )
+
         return answer
 
     def add_memory(self, chat_memory: list):
@@ -49,12 +58,10 @@ class Chat_model():
                 )
 
     def __validate_purpose(self, purpose):
-        if purpose == "diagnosis":
-            self.__purpose = purpose
-        elif purpose == "chat":
+        if purpose in ["diagnosis", "chat", "to_eng"]:
             self.__purpose = purpose
         else:
-            raise KeyError("diagnosis or chat")
+            raise KeyError("Improper purpose")
 
     def __set_memory(self):
         self.__memory = ConversationSummaryBufferMemory(
@@ -107,3 +114,11 @@ class Chat_model():
             question=translate_dict["question"],
             )
         return main_prompt, translate_prompt
+
+    def __set_prompt_to_eng(self):
+        from llm.prompts import translate_dict, chat_prompt_system
+        main_prompt = chat_prompt_system(
+            role=translate_dict["role_to_eng"],
+            question=translate_dict["question_to_eng"],
+            )
+        return main_prompt
