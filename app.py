@@ -1,5 +1,5 @@
 import os
-import json
+#import json
 import random
 import streamlit as st
 from utils.util import Setting_session_state, Setting_language, Clear, Format_form
@@ -168,13 +168,13 @@ def main():
             with st.status(label="Making diagnosis"):
                 st.session_state.diagnosis = diagnosis.run(input= diagnosis_input_dict)
             st.session_state.memory.append({"role": "assistant", "content": st.session_state.diagnosis["user_language"]})
-            info_dict = {
+            st.session_state.user_data[f"{st.session_state.user_id}"] = {
                 "personal": st.session_state.user_data["personal_data"],
                 "symptoms": st.session_state.user_data["symptoms"],
                 "diagnosis": st.session_state.diagnosis["english"]
             }
-            with open(os.path.join(main_path, "user", st.session_state.user_id+".json"), "w") as f:
-                json.dump(info_dict, f, indent="\t")
+            #with open(os.path.join(main_path, "user", st.session_state.user_id+".json"), "w") as f:
+            #    json.dump(info_dict, f, indent="\t")
             st.session_state.progress = "chat"
             st.rerun()
 
