@@ -62,19 +62,16 @@ def main():
                     label= "Which form of food does your baby eat?",
                     options=["breastfeeding", "powdered milk", "baby food"]
                 )
+                form_num = st.slider(
+                    label=st.session_state.system_messages["choose_number_of_data"],
+                    min_value=1,
+                    max_value=7,
+                    step=1,
+                    value=1,
+                )
                 personal_data = st.form_submit_button()
             if personal_data:
                 st.session_state.user_data["personal_data"] = f"<BABY'S PERSONAL DATA>\nSex: {sexual_data}\nAge: {age_data} months\nFeed: {feed_data}"
-                st.success("SUBMITTED")
-            form_num = st.slider(
-                label=st.session_state.system_messages["choose_number_of_data"],
-                min_value=1,
-                max_value=7,
-                step=1,
-                value=1,
-            )
-            num_button = st.button(label="submit!")
-            if num_button:
                 st.session_state.form_index = int(form_num)
                 st.session_state.user_data["info_list"] = []
                 st.rerun()

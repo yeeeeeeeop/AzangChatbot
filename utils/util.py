@@ -26,6 +26,8 @@ def Setting_session_state():
         st.session_state.user_messages = {}
     if "memory" not in st.session_state: #user language로 저장
         st.session_state.memory = [] #[{"role": "ai/user", "content": "something"}]
+    if "chat_memory" not in st.session_state: #스트림릿 챗 메모리용
+        st.session_state.chat_memory = []
 
 def Setting_language():
     if st.session_state.lang_changed == True:
