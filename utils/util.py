@@ -46,6 +46,7 @@ def Clear():
         st.session_state.user_data = {}
         st.session_state.user_input_instance = ""
         st.session_state.memory = []
+        st.session_state.chat_memory = []
         st.session_state.diagnosis = {}
         st.session_state.form_index = ""
         st.rerun()
