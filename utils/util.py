@@ -6,6 +6,8 @@ openai_api = st.secrets["OPENAI_API_KEY"]
 def Setting_session_state():
     if "progress" not in st.session_state:
         st.session_state.progress = "start"
+    if "user_id" not in st.session_state:
+        st.session_state.user_id = ""
     if "lang_changed" not in st.session_state:
         st.session_state.lang_changed = True
     if "diagnosis" not in st.session_state:
@@ -24,8 +26,6 @@ def Setting_session_state():
         st.session_state.user_messages = {}
     if "memory" not in st.session_state: #user language로 저장
         st.session_state.memory = [] #[{"role": "ai/user", "content": "something"}]
-    if "chat_memory" not in st.session_state: #영어로 저장
-        st.session_state.chat_memory = [] #[{"role": "ai/user", "content": "something"}]
 
 def Setting_language():
     if st.session_state.lang_changed == True:
@@ -40,10 +40,10 @@ def Clear():
         clear_button = st.button(label=st.session_state.system_messages["reset"], use_container_width=True)
     if clear_button:
         st.session_state.progress = "start"
+        st.session_state.user_id = ""
         st.session_state.user_data = {}
         st.session_state.user_input_instance = ""
         st.session_state.memory = []
-        st.session_state.chat_memory = []
         st.session_state.diagnosis = {}
         st.session_state.form_index = ""
         st.rerun()

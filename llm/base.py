@@ -1,14 +1,16 @@
+import os
 from langchain_openai.chat_models import ChatOpenAI
-from langchain.memory import ConversationSummaryBufferMemory
 from utils.util import openai_api
 
 class Chat_model:
-    def __init__(self, purpose: str):
+    def __init__(self, purpose: str, language: str, main_path: str):
         self.__validate_purpose(purpose)
+        self.__validate_language(language)
+        self.__path = main_path
         if self.__purpose == "chat":
-            self.__set_memory()
+            self.__set_tools()
     
-    def run(self, input: dict):
+    def run(self, input: dict) -> dict:
         model = ChatOpenAI(
             temperature=0.1,
             max_tokens=1000,
@@ -18,44 +20,44 @@ class Chat_model:
 
         if self.__purpose == "diagnosis":
             from llm.chains import Activate_diagnosis_chain
-            main_prompt, evaluate_each_prompt, diagnose_each_prompt, feature_prompt, translate_prompt = self.__set_prompt_diagnosis()
+            main_prompt, evaluate_each_prompt, diagnose_each_prompt, feature_prompt = self.__set_prompt_diagnosis()
+            input["faiss_path"] = os.path.join(self.__path, "faiss", "abs_with_textbook")
             answer = Activate_diagnosis_chain(
                 chat_model= model,
                 main_prompt= main_prompt,
                 evaluate_each_prompt= evaluate_each_prompt,
                 diagnose_each_prompt= diagnose_each_prompt,
                 feature_prompt= feature_prompt,
-                translate_prompt= translate_prompt,
                 _dict= input
                 )
 
         if self.__purpose == "chat":
             from llm.chains import Activate_chat_chain
-            main_prompt, translate_prompt = self.__set_prompt_chat()
+            from llm.prompts import agent_prompt
             answer = Activate_chat_chain(
                 chat_model= model,
-                main_prompt= main_prompt,
-                translate_prompt= translate_prompt,
+                agent_prompt= agent_prompt,
+                path= self.__path,
+                tools= self.__tools,
                 _dict= input
                 )
 
-        if self.__purpose == "to_eng":
+        if self.__langauge != "English":
             from llm.chains import Activate_translate_chain
-            main_prompt = self.__set_prompt_to_eng()
-            answer = Activate_translate_chain(
+            translate_prompt = self.__set_prompt_translate()
+            answer_user_language = Activate_translate_chain(
                 chat_model= model,
-                main_prompt= main_prompt,
-                _dict= input
-                )
+                main_prompt= translate_prompt,
+                _dict = {
+                    "language": self.__langauge,
+                    "input": answer
+                }
+            )
+            answer_dict = {"english": answer, "user_language": answer_user_language}
+        else:
+            answer_dict = {"english": answer, "user_language": answer}
 
-        return answer
-
-    def add_memory(self, chat_memory: list):
-        for item in chat_memory:
-            self.__memory.save_context(
-                inputs= {"input": item["input"]},
-                outputs= {"output": item["output"]}
-                )
+        return answer_dict
 
     def __validate_purpose(self, purpose):
         if purpose in ["diagnosis", "chat", "to_eng"]:
@@ -63,19 +65,18 @@ class Chat_model:
         else:
             raise KeyError("Improper purpose")
 
-    def __set_memory(self):
-        self.__memory = ConversationSummaryBufferMemory(
-            human_prefix= "user",
-            ai_prefix= "assistant",
-            llm= ChatOpenAI(temperature=0.1, api_key=openai_api, model="gpt-3.5-turbo-0125"),
-            input_key= "input",
-            output_key= "output",
-            return_messages= True,
-            max_token_limit= 2000,
-        )
+    def __validate_language(self, langauge):
+        if langauge in ["English", "Korean"]:
+            self.__langauge = langauge
+        else:
+            raise KeyError("Improper langauge")
+
+    def __set_tools(self):
+        from llm.tool import Tools_for_chat
+        self.__tools = Tools_for_chat(main_path=self.__path)
 
     def __set_prompt_diagnosis(self):
-        from llm.prompts import diagnosis_dict, feature_extr_dict, translate_dict, chat_prompt_system
+        from llm.prompts import diagnosis_dict, feature_extr_dict, chat_prompt_system
         main_prompt = chat_prompt_system(
             role=diagnosis_dict["role_setting_diagnosis"],
             question=diagnosis_dict["question_diagnosis"],
@@ -96,36 +97,20 @@ class Chat_model:
             role=feature_extr_dict["role"],
             question=feature_extr_dict["question"],
             )
-        translate_prompt = chat_prompt_system(
-            role=translate_dict["role"],
-            question=translate_dict["question"],
-            )
-        return main_prompt, evaluate_each_prompt, diagnosis_each_prompt, feature_prompt, translate_prompt
-
-    def __set_prompt_chat(self):
-        from llm.prompts import chat_dict, translate_dict, chat_prompt_system
-        main_prompt = chat_prompt_system(
-            role=chat_dict["role"],
-            question=chat_dict["question"],
-            chat_logs= self.__memory.load_memory_variables({})["history"]
-            )
-        translate_prompt = chat_prompt_system(
-            role=translate_dict["role"],
-            question=translate_dict["question"],
-            )
-        return main_prompt, translate_prompt
-
-    def __set_prompt_to_eng(self):
+        return main_prompt, evaluate_each_prompt, diagnosis_each_prompt, feature_prompt
+    
+    def __set_prompt_translate(self):
         from llm.prompts import translate_dict, chat_prompt_system
-        main_prompt = chat_prompt_system(
-            role=translate_dict["role_to_eng"],
-            question=translate_dict["question_to_eng"],
+        translate_prompt = chat_prompt_system(
+            role=translate_dict["role"],
+            question=translate_dict["question"],
             )
-        return main_prompt
+        return translate_prompt
     
 class Messages_translator:
+    from llm.prompts import kor_to_eng_prompt
     __lang = "english"
-    __trans = Chat_model(purpose= "to_eng")
+    __trans = kor_to_eng_prompt | ChatOpenAI(temperature=0.1)
 
     def __init__(self, language: str, to_eng: bool | None = False):
         self.__lang = language
@@ -155,8 +140,8 @@ class Messages_translator:
         if type(_text) != str:
             raise TypeError("Only str could be translated.")
         trs = self.__trans
-        res = trs.run(input={"input": _text})
-        return res
+        res = trs.invoke({"input": _text})
+        return res.content
 
     def __translate_list(self, _list: list) -> list:
         instance_list = list()

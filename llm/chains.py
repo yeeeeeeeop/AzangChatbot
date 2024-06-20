@@ -7,6 +7,10 @@ from utils.util import openai_api
 
 embedding_openai = OpenAIEmbeddings(api_key = openai_api)
 
+def Retriever_from_faiss(faiss_path: str):
+    database = FAISS.load_local(folder_path=faiss_path, embeddings=embedding_openai, allow_dangerous_deserialization=True)
+    retriever = database.as_retriever()
+    return retriever
 def Add_feature_context(_dict: dict):
     vectordb_RAG = FAISS.load_local(folder_path=_dict["faiss_path"], embeddings=embedding_openai, allow_dangerous_deserialization=True)
     retriever = vectordb_RAG.as_retriever(
@@ -40,7 +44,6 @@ def Activate_diagnosis_chain(
         evaluate_each_prompt,
         diagnose_each_prompt,
         feature_prompt,
-        translate_prompt,
         _dict:dict):
     
     def format_symptoms(_dict: dict) -> dict:
@@ -85,28 +88,39 @@ def Activate_diagnosis_chain(
             text += "\n==\n"+comment
         return text
     
-    output_dict = dict()
     diagnosis_chain = {
         "symptoms": itemgetter("symptoms"),
         "comments": RunnableLambda(format_symptoms) | RunnableLambda(Add_diagnostic_contexts) | RunnableLambda(map_diagnosis),
         } | main_prompt | chat_model
-    output_dict["english"] = diagnosis_chain.invoke(_dict).content
-    korean_chain = translate_prompt | chat_model
-    output_dict["user_language"] = korean_chain.invoke({"input": output_dict["english"]}).content
-    return output_dict
+    return diagnosis_chain.invoke(_dict).content
 
 def Activate_chat_chain(
         chat_model,
-        main_prompt,
-        translate_prompt,
+        agent_prompt,
+        path,
+        tools,
         _dict):
-    output_dict = dict()
-    chat_chain = RunnableLambda(Add_chat_context) | main_prompt | chat_model
-    output_dict["english"] = chat_chain.invoke(_dict).content
-    korean_chain = translate_prompt | chat_model
-    output_dict["user_language"] = korean_chain.invoke({"input": output_dict["english"]}).content
-    return output_dict
+    from llm.agent import Chatting_agent
+    chatbot = Chatting_agent(
+        llm= chat_model,
+        main_path= path,
+        chat_tools= tools,
+        agent_prompt= agent_prompt,
+    )
+    res = chatbot.invoke(
+        input= _dict["input"],
+        config= {
+            "configurable": {
+                "user_id": _dict["user_id"],
+                "conversation_id":_dict["conversation_id"]
+            }
+        }
+    )
+    return res["output"]
 
-def Activate_translate_chain(chat_model, main_prompt, _dict):
+def Activate_translate_chain(
+        chat_model,
+        main_prompt,
+        _dict):
     translate_chain = main_prompt | chat_model
     return translate_chain.invoke(_dict).content

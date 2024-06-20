@@ -2,7 +2,8 @@ import os
 import json
 from langchain.vectorstores.faiss import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from utils.util import embedding_openai
+from langchain_openai.embeddings import OpenAIEmbeddings
+from utils.util import openai_api
 
 def Read_json(file_path):
     with open(file_path, "r") as f:
@@ -39,7 +40,7 @@ def Split_and_format_documents(abs_list_raw: list, metadata_list_raw:list | None
 def Generate_local_faiss(abs_list: list, metadata_list: list, faiss_path: str):
     vectordb_RAG = FAISS.from_texts(
         texts= abs_list, 
-        embedding= embedding_openai,
+        embedding= OpenAIEmbeddings(api_key=openai_api),
         metadatas= metadata_list if metadata_list != [] else None
         )
     vectordb_RAG.save_local(folder_path=faiss_path)

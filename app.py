@@ -1,4 +1,6 @@
 import os
+import json
+import random
 import streamlit as st
 from utils.util import Setting_session_state, Setting_language, Clear, Format_form
 from llm.base import Chat_model, Messages_translator
@@ -9,9 +11,8 @@ def Setting():
     )
     Setting_session_state()
     Setting_language()
-    global main_path, faiss_path
+    global main_path
     main_path = os.getcwd()
-    faiss_path = os.path.join(main_path, "faiss")
 
 def main():
     st.title(st.session_state.system_messages["title"])
@@ -21,8 +22,8 @@ def main():
         for item in st.session_state.memory:
             st.chat_message(name=item["role"]).write(item["content"])
 
-    # phase 1: progress = start
-    # 유저한테서 기본적인 정보 받아옴
+    # phase 0: progress = start
+    # api 사용되기 때문에 간단한 잠금 구현과 user id 랜덤 생성
     if st.session_state.progress == "start":
         with st.form(key="lock"):
             password = st.text_input(
@@ -32,9 +33,12 @@ def main():
             lock_pass = st.form_submit_button()
         if lock_pass:
             if password == st.secrets["TEAM"]:
+                st.session_state.user_id = str(random.randint(a=1, b=999))
                 st.session_state.progress = "form"
                 st.rerun()
 
+    # phase 1: progress = form
+    # 유저한테서 기본적인 정보 받아옴
     if st.session_state.progress == "form":
         with st.chat_message("assistant"):
             st.write(st.session_state.ai_messages["intro"])
@@ -43,6 +47,25 @@ def main():
             st.session_state.user_input_instance = ""
         form_item_list = list(Format_form.form_choices_dict.keys())
         if st.session_state.form_index == "":
+            with st.form(key="personal_info"):
+                sexual_data = st.radio(
+                    label= "What's your baby's sex?",
+                    options=["Male", "Female"]
+                )
+                age_data = st.slider(
+                    label="What's your baby's month-age?",
+                    min_value= 1,
+                    max_value= 60,
+                    step=1
+                )
+                feed_data = st.radio(
+                    label= "Which form of food does your baby eat?",
+                    options=["breastfeeding", "powdered milk", "baby food"]
+                )
+                personal_data = st.form_submit_button()
+            if personal_data:
+                st.session_state.user_data["personal_data"] = f"<BABY'S PERSONAL DATA>\nSex: {sexual_data}\nAge: {age_data} months\nFeed: {feed_data}"
+                st.success("SUBMITTED")
             form_num = st.slider(
                 label=st.session_state.system_messages["choose_number_of_data"],
                 min_value=1,
@@ -88,10 +111,7 @@ def main():
                 info_str = Format_form.format_form_result(
                     args_list=[st.session_state[item + str(st.session_state.form_index)] for item in form_item_list]
                     )
-                each_info = f"""<TIME DATA>
-                {time_data}
-                <DESCRIPTION>
-                {info_str}
+                each_info = f"""<TIME DATA>\n{time_data}\n<DESCRIPTION>\n{info_str}
                 -
                 """
                 st.session_state.user_data["info_list"].append(each_info)
@@ -103,7 +123,7 @@ def main():
             st.session_state.progress = "add_info"
             st.rerun()
     
-    # phase 2: progress = information
+    # phase 2: progress = add_info
     # 유저한테 조금 더 디테일한 정보 받아옴
     if st.session_state.progress == "add_info":
         with st.chat_message("user"):
@@ -125,6 +145,8 @@ def main():
                 )
             if user_confirmed:
                 st.session_state.user_data["symptoms"] = st.session_state.user_data["basic_info"]+"\n"+st.session_state.user_data["additional_context"]
+                st.session_state.memory.append({"role": "user", "content": "*form submitted*"})    
+                st.session_state.memory.append({"role": "assistant", "content": st.session_state.ai_messages["form_submitted"]})    
                 st.session_state.memory.append({"role": "user", "content": st.session_state.user_data["additional_context_ulang"]})    
                 st.session_state.progress = "chain"
                 st.rerun()
@@ -141,32 +163,42 @@ def main():
             use_container_width= True
         )
         if start_diagnosis:
-            diagnosis = Chat_model(purpose="diagnosis")
-            diagnosis_input_dict= {
-                "symptoms" : st.session_state.user_data["symptoms"],
-                "how_many_search" : 15,
-                "faiss_path": os.path.join(faiss_path, "abs_with_textbook"),
-            }
+            diagnosis = Chat_model(
+                purpose= "diagnosis",
+                language= "Korean",
+                main_path= main_path)
+            diagnosis_input_dict= {"symptoms": st.session_state.user_data["personal_data"]+"\n"+st.session_state.user_data["symptoms"]}
             with st.status(label="Making diagnosis"):
                 st.session_state.diagnosis = diagnosis.run(input= diagnosis_input_dict)
             st.session_state.memory.append({"role": "assistant", "content": st.session_state.diagnosis["user_language"]})
+            info_dict = {
+                "personal": st.session_state.user_data["personal_data"],
+                "symptoms": st.session_state.user_data["symptoms"],
+                "diagnosis": st.session_state.diagnosis["english"]
+            }
+            with open(os.path.join(main_path, "user", st.session_state.user_id+".json"), "w") as f:
+                json.dump(info_dict, f, indent="\t")
             st.session_state.progress = "chat"
             st.rerun()
 
     # phase 4: progress = chat
     # 진단 기반으로 챗봇 구현
     if st.session_state.progress == "chat":
-        chat = Chat_model(purpose="chat")
-        if st.session_state.chat_memory:
-            chat.add_memory(st.session_state.chat_memory)
+        chat = Chat_model(
+            purpose="chat",
+            language="Korean",
+            main_path=main_path
+        )
         if st.session_state.user_input_instance:
             chat_input = {
-                "symptoms":st.session_state.user_data["symptoms"],
-                "query": st.session_state.user_input_instance,
-                "diagnosis": st.session_state.diagnosis["english"],
-                "faiss_path": os.path.join(faiss_path, "abs_with_textbook")}
+                "input":{
+                    "user_id": st.session_state.user_id,
+                    "input": st.session_state.user_input_instance
+                },
+                "user_id": st.session_state.user_id,
+                "conversation_id": "1"
+            }
             chat_answer = chat.run(input= chat_input)
-            st.session_state.chat_memory.append({"input": st.session_state.user_input_instance, "output": chat_answer["english"]})
             st.session_state.memory.append({"role": "user", "content": st.session_state.user_data["chat_input_ulang"]})
             st.session_state.memory.append({"role": "assistant", "content": chat_answer["user_language"]})
             st.session_state.user_input_instance = ""
@@ -175,7 +207,7 @@ def main():
 # 하단 입력 공간과 대화 초기화 버튼
 def User_input_below():
     def Submit():
-        ulang_2_eng = Messages_translator("korean", to_eng=True)
+        ulang_2_eng = Messages_translator(language="Korean", to_eng=True)
         st.session_state.user_input_instance = ulang_2_eng.translate(st.session_state.widget)
         if st.session_state.progress == "add_info":
             st.session_state.user_data["additional_context_ulang"] = st.session_state.widget
