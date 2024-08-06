@@ -1,7 +1,7 @@
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 agent_prompt = ChatPromptTemplate.from_messages([
-    ("system","""You are a helpful chat assistant.
+    ("human","""system: You are a helpful chat assistant.
     Your clients are parents of infants with stool problems. 
     Make sure to speak in a soothing and reassuring tone of their concern about their baby.
     Answer the point the clients asked succinctly.
@@ -12,7 +12,7 @@ agent_prompt = ChatPromptTemplate.from_messages([
     ]
 )
 kor_to_eng_prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are a helpful translation assistant between korean and english.
+    ("human", """system: You are a helpful translation assistant between korean and english.
     Your work is to translate given korean input into polite english output.
 
     There are special jargons you have to remember when you are on your work.
@@ -236,7 +236,7 @@ diagnosis_dict = {
 
 def chat_prompt_system(role: str, question: str, example: str | None = None, ex_answer: str | None = None, chat_logs: list | None = None):
     messages = []
-    role_tuple = ("system", role)
+    role_tuple = ("human", role)
     messages.append(role_tuple)
     if example != None and ex_answer != None:
         for i in range(len(example)):
@@ -247,7 +247,7 @@ def chat_prompt_system(role: str, question: str, example: str | None = None, ex_
     if chat_logs != None:
         for item in chat_logs:
             messages.append(item)
-    start_tuple = ("system", """Now, the user is about to ask you to do your work with new conditions. Try your best.""")
+    start_tuple = ("human", """system: Now, the user is about to ask you to do your work with new conditions. Try your best.""")
     question_tuple = ("user", question)
     messages.append(start_tuple)
     messages.append(question_tuple)

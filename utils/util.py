@@ -2,6 +2,7 @@ import streamlit as st
 from utils.messages import UI_messages
 
 openai_api = st.secrets["OPENAI_API_KEY"]
+gemini_api = st.secrets["GEMINI_API_KEY"]
 
 def Setting_session_state():
     if "progress" not in st.session_state:

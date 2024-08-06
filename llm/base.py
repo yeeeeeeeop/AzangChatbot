@@ -1,6 +1,7 @@
 import os
 from langchain_openai.chat_models import ChatOpenAI
-from utils.util import openai_api
+from langchain_google_genai import ChatGoogleGenerativeAI
+from utils.util import openai_api, gemini_api
 
 class Chat_model:
     def __init__(self, purpose: str, language: str, main_path: str):
@@ -11,11 +12,18 @@ class Chat_model:
             self.__set_tools()
     
     def run(self, input: dict) -> dict:
-        model = ChatOpenAI(
+        # model = ChatOpenAI(
+        #     temperature=0.1,
+        #     max_tokens=1000,
+        #     api_key= openai_api,
+        #     model="gpt-3.5-turbo-0125",
+        #     )
+        model = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash-latest",
+            api_key= gemini_api,
             temperature=0.1,
             max_tokens=1000,
-            api_key= openai_api,
-            model="gpt-3.5-turbo-0125",
+            convert_system_message_to_human=True
             )
 
         if self.__purpose == "diagnosis":
@@ -110,7 +118,7 @@ class Chat_model:
 class Messages_translator:
     from llm.prompts import kor_to_eng_prompt
     __lang = "english"
-    __trans = kor_to_eng_prompt | ChatOpenAI(temperature=0.1)
+    __trans = kor_to_eng_prompt | ChatGoogleGenerativeAI(temperature=0.1, api_key=gemini_api, model="gemini-1.5-flash-latest",  convert_system_message_to_human=True)
 
     def __init__(self, language: str, to_eng: bool | None = False):
         self.__lang = language

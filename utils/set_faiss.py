@@ -3,6 +3,8 @@ import json
 from langchain.vectorstores.faiss import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai.embeddings import OpenAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
 from utils.util import openai_api
 
 def Read_json(file_path):

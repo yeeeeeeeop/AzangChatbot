@@ -3,9 +3,13 @@ from operator import itemgetter
 from langchain.vectorstores.faiss import FAISS
 from langchain.schema.runnable import RunnableLambda
 from langchain_openai.embeddings import OpenAIEmbeddings
-from utils.util import openai_api
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+from utils.util import openai_api, gemini_api
 
 embedding_openai = OpenAIEmbeddings(api_key = openai_api)
+embedding_gemini = GoogleGenerativeAIEmbeddings(model="models/embedding-001", api_key=gemini_api)
+
 
 def Retriever_from_faiss(faiss_path: str):
     database = FAISS.load_local(folder_path=faiss_path, embeddings=embedding_openai, allow_dangerous_deserialization=True)
